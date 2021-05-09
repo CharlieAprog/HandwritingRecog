@@ -99,6 +99,7 @@ ax[2].set_title('Detected lines')
 change = 90 - -1*np.mean(angles)
 
 newImage = cv2.bitwise_not(imutils.rotate_bound(image, -change))
+cv2.imwrite("data/image-data/Test/histogramTest.jpg", newImage)
 ax[3].imshow(newImage, cmap='gray')
 
 plt.tight_layout()
