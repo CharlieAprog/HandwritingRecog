@@ -98,8 +98,8 @@ ax[2].set_title('Detected lines')
 
 change = 90 - -1*np.mean(angles)
 
-rotated = imutils.rotate_bound(image, -change)
-ax[3].imshow(rotated, cmap='gray')
+newImage = cv2.bitwise_not(imutils.rotate_bound(image, -change))
+ax[3].imshow(newImage, cmap='gray')
 
 plt.tight_layout()
 plt.show()
