@@ -9,7 +9,7 @@ import cv2
 from matplotlib import cm
 from matplotlib import pyplot as plt
 
-img_path = 'data/image-data/binary/P564-Fg003-R-C01-R01-binarized.jpg'
+img_path = 'data/image-data/binary/P423-1-Fg002-R-C02-R01-binarized.jpg'
 #image = Image.open(img_path)
 #image = PIL.ImageOps.invert(image)
 image = cv2.imread(img_path, 0)
@@ -90,7 +90,7 @@ for row in newImage:
 temp = []
 thr = {}
 c = 0
-thr_num = 40
+thr_num = max(hist)*0.2
 for idx, p in enumerate(hist):
     if p >= thr_num and hist[idx - 1] > thr_num and idx > 0:
         temp.append(p)
@@ -143,6 +143,6 @@ for k in thr_peaks.keys():
                 if idx == 0:
                     plt.axhline(y=loc - avg_lh // 3, color="r", linestyle="-")
                 else:
-                    plt.axhline(y=loc + avg_lh // 3, color="r", linestyle="-")
+                    plt.axhline(y=loc + avg_lh // 2.5, color="r", linestyle="-")
 plt.show()
 # ------------------------- Histogram part -------------------------
