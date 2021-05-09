@@ -15,33 +15,6 @@ img_path = 'data/image-data/binary/P564-Fg003-R-C01-R01-binarized.jpg'
 image = cv2.imread(img_path, 0)
 image = cv2.bitwise_not(image)
 
-# edges = canny(image, 2, 1, 25)
-
-# lines = probabilistic_hough_line(edges, threshold=60, line_length=10,
-#                                  line_gap=8)
-# fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharex=True, sharey=True)
-# ax = axes.ravel()
-
-# ax[0].imshow(image, cmap=cm.gray)
-# ax[0].set_title('Input image')
-
-# ax[1].imshow(edges, cmap=cm.gray)
-# ax[1].set_title('Canny edges')
-
-# ax[2].imshow(edges * 0)
-# for line in lines:
-#     p0, p1 = line
-#     ax[2].plot((p0[0], p1[0]), (p0[1], p1[1]))
-# ax[2].set_xlim((0, image.shape[1]))
-# ax[2].set_ylim((image.shape[0], 0))
-# ax[2].set_title('Probabilistic Hough')
-
-# for a in ax:
-#     a.set_axis_off()
-
-# plt.tight_layout()
-# plt.show()
-
 # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
 tested_angles = np.linspace(np.pi* 45/100, -np.pi *55/100, 100)
 hspace, theta, dist, = hough_line(image, tested_angles)
@@ -108,3 +81,68 @@ plt.show()
 angle_difference = np.max(angles) - np.min(angles)
 print(180 - angle_difference)   #Subtracting from 180 to show it as the small angle between two lines
 
+# ------------------------- Histogram part -------------------------
+hist = []
+row_len = newImage.shape[1]
+for row in newImage:
+    hist.append(row_len - len(row.nonzero()[0]))
+
+temp = []
+thr = {}
+c = 0
+thr_num = 40
+for idx, p in enumerate(hist):
+    if p >= thr_num and hist[idx - 1] > thr_num and idx > 0:
+        temp.append(p)
+        c += 1
+    elif len(temp) > 0:
+        thr.setdefault(idx - c, temp)
+        temp = []
+        c = 0
+
+line_heights = []
+thr_peaks = {}
+for idx, p in enumerate(thr.items()):
+    line_heights.append(p[0] + len(p[1]) - p[0])
+
+    thr_peaks[idx] = {
+        "loc": [p[0], p[0] + len(p[1])],
+        "value": max(p[1]),
+        "lh": p[0] + len(p[1]) - p[0]
+    }
+
+avg_lh = sum(line_heights) / len(line_heights)
+q3, q1 = np.percentile(line_heights, [75, 25])
+iqr = q3-q1
+outlier = q1-1.5*iqr
+
+# ----------------------- Histogram plotting -----------------------
+# figure = plt.figure(figsize=(16, 12))
+# fs = 25
+# plt.plot(hist)
+# plt.ylim(0, max(hist)*1.1)
+# plt.xlabel("Row", fontsize=fs)
+# plt.ylabel("Black pixels", fontsize=fs)
+# plt.title("Binary image black pixel counting result", fontsize=fs)
+# plt.yticks(fontsize=fs-5)
+# plt.xticks(fontsize=fs-5)
+# # plt.grid()
+# plt.show()
+# ----------------------- Histogram plotting -----------------------
+
+figure = plt.figure(figsize=(16, 12))
+fs = 25
+plt.imshow(newImage)
+line_heights = []
+for k in thr_peaks.keys():
+    for _ in thr_peaks[k].keys():
+        if thr_peaks[k]["lh"] <= outlier:
+            pass
+        else:
+            for idx, loc in enumerate(thr_peaks[k]["loc"]):
+                if idx == 0:
+                    plt.axhline(y=loc - avg_lh // 3, color="r", linestyle="-")
+                else:
+                    plt.axhline(y=loc + avg_lh // 3, color="r", linestyle="-")
+plt.show()
+# ------------------------- Histogram part -------------------------
