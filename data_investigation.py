@@ -176,7 +176,7 @@ def FindLargestContour(data_path,avg_x,avg_y,max_x,max_y,std_x,std_y):
         height,width= roi.shape
         #Keep data path to not save outlier in the future
 
-        if (height >= avg_y +3*std_y)  and (width >= avg_x + 3 *std_x):
+        if (height >= avg_y +4*std_y)  or (width >= avg_x + 4*std_x):
             outliers_number+=1
             outliers_paths.append(img_name)
 
@@ -215,14 +215,41 @@ def FindLargestContour(data_path,avg_x,avg_y,max_x,max_y,std_x,std_y):
             if width > max_x:
                 max_x = width
     print(max_x,max_y,'new max dimensions after outlier removal.')
-        #f, axarr = plt.subplots(2, 2)
-        #axarr[0,0].imshow(thresh_gray,cmap='gray')
-        #axarr[0,1].imshow(roi,cmap='gray')
-        #plt.show()
     #now pad according to max dimensions and save
+    for img_name in data:
+        if img_name not in outliers_paths:
+            im_bw = cv2.imread(img_name, 0)  # Grayscale conversion
 
+            retval, thresh_gray = cv2.threshold(im_bw, thresh=100, maxval=255, \
+                                                type=cv2.THRESH_BINARY_INV)
 
+            contours, image = cv2.findContours(thresh_gray, cv2.RETR_LIST, \
+                                               cv2.CHAIN_APPROX_SIMPLE)
 
+            # Find object with the biggest bounding box
+            mx = (0, 0, 0, 0)  # biggest bounding box so far
+            mx_area = 0
+            for cont in contours:
+                x, y, w, h = cv2.boundingRect(cont)
+                area = w * h
+                if area > mx_area:
+                    mx = x, y, w, h
+                    mx_area = area
+            x, y, w, h = mx
+
+            roi = thresh_gray[y:y + h, x:x + w]
+            height, width = roi.shape
+
+            paddedroi = cv2.copyMakeBorder(roi, max_y - height, 0, 0,max_x-width, cv2.BORDER_CONSTANT, 255)
+
+            f, axarr = plt.subplots(2, 2)
+            axarr[0,0].imshow(paddedroi,cmap='gray')
+            axarr[0,1].imshow(roi,cmap='gray')
+            plt.show()
+            print(max_y,max_x,' These are the max dimensions')
+            height,width = paddedroi.shape
+            print(height,width,' This is  the padded dimensions of our given char image')
+            
 def findstd(data_path,avg_x,avg_y,img_size_all_x,img_size_all_y):
     data = glob.glob(data_path)
     std_y = 0
@@ -265,11 +292,9 @@ def findstd(data_path,avg_x,avg_y,img_size_all_x,img_size_all_y):
 avg_x,avg_y = data_size_stats("data/monkbrill/*/*.pgm")
 #Get stats for cropped images
 avg_x, avg_y,max_x,max_y, img_size_all_x, img_size_all_y = CroppedCharAnalysis("data/monkbrill/*/*.pgm")
-#crop ,resize,save images
+#find standard deviation of new cropped dataset
 std_x,std_y = findstd("data/monkbrill/*/*.pgm",avg_x,avg_y,img_size_all_x,img_size_all_y)
-
-
-
+#create new dataset, pad according to max dimensions, save
 FindLargestContour("data/monkbrill/*/*.pgm",avg_x,avg_y,max_x,max_y,std_x,std_y)
 
 
