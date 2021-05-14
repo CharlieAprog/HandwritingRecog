@@ -162,7 +162,7 @@ def CropAndPadding(data_path,avg_x,avg_y,max_x,max_y,std_x,std_y):
     for img_name in data:
         im_bw = cv2.imread(img_name,0) #Grayscale conversion
         #Binarize images
-        retval, thresh_gray = cv2.threshold(im_bw, thresh=100, maxval=255, \
+        retval, thresh_gray = cv2.threshold(im_bw, thresh=150, maxval=255, \
                                             type=cv2.THRESH_BINARY_INV)
         #find contours of images
         contours, image= cv2.findContours(thresh_gray, cv2.RETR_LIST, \
@@ -180,23 +180,54 @@ def CropAndPadding(data_path,avg_x,avg_y,max_x,max_y,std_x,std_y):
         x, y, w, h = mx
         #biggest bounding box is character: crop image
         roi = thresh_gray[y:y + h, x:x + w]
-        height,width= roi.shape
-
+        # here we have the cropped images
+        # roi is image name height, width of that image
+        height, width = roi.shape
+        # set new height and width similar to avg but now I make sure we have square images
+        height_all = 40
+        width_all = 40
+        # plt.imshow(roi, cmap='gray_r')
+        # plt.show()
+        # resize and pad all images to same dimmension
+        if height > width:
+            resize_factor = height_all / height
+            new_width = int(roi.shape[1] * resize_factor)
+            dim = (new_width, height_all)
+            resized_img = cv2.resize(roi, dim, interpolation=cv2.INTER_NEAREST)
+            left_pad = int((width_all - new_width) / 2)
+            right_pad = left_pad
+            if left_pad + right_pad + new_width != 40:
+                right_pad += 1
+            resized_pad_img = cv2.copyMakeBorder(resized_img, 0, 0, left_pad, right_pad, cv2.BORDER_CONSTANT, 255)
+        else:
+            resize_factor = width_all / width
+            new_height = int(roi.shape[0] * resize_factor)
+            dim = (width_all, new_height)
+            resized_img = cv2.resize(roi, dim, interpolation=cv2.INTER_NEAREST)
+            top_pad = int((height_all - new_height) / 2)
+            bottom_pad = top_pad
+            if top_pad + bottom_pad + new_height != 40:
+                bottom_pad += 1
+            resized_pad_img = cv2.copyMakeBorder(resized_img, top_pad, bottom_pad, 0, 0, cv2.BORDER_CONSTANT, 255)
+        print("New Dimmensions: ", resized_pad_img.shape[0], resized_pad_img.shape[1])
+        # print(img_name)
+        # plt.imshow(resized_pad_img, cmap='gray_r', )
+        # plt.show()
+'''
         #Keep data path of outlier:
         if (height >= avg_y +4*std_y) or (width >= avg_x + 4*std_x):
             outliers_number+=1
             outliers_paths.append(img_name)
-            f, axarr = plt.subplots(2, 2)
-            axarr[0,1].imshow(roi,cmap='gray')
-            plt.show()
-            print(img_name)
+            #axarr[0,1].imshow(roi,cmap='gray')
+            #plt.show()
+            #print(img_name)
 
-        if (height/width) >= 1.5  or (width/height) >= 1.5:
-            f, axarr = plt.subplots(2, 2)
-            axarr[0, 1].imshow(roi, cmap='gray')
-            plt.show()
-            print(img_name)
-            print('height/width outlier')
+        # if (height/width) >= 1.5  or (width/height) >= 1.5:
+        #     f, axarr = plt.subplots(2, 2)
+        #     axarr[0, 1].imshow(roi, cmap='gray')
+        #     plt.show()
+        #     print(img_name)
+        #     print('height/width outlier')
 
 
     print('Number of outliers to be removed:',outliers_number)
@@ -271,7 +302,7 @@ def CropAndPadding(data_path,avg_x,avg_y,max_x,max_y,std_x,std_y):
         #print new max dimension
         #print(max_y,max_x,' These are the max dimensions')
 
-
+'''
 def findstd(data_path,avg_x,avg_y,img_size_all_x,img_size_all_y):
     #get the standard devation  of the data after the cropping
     data = glob.glob(data_path)
