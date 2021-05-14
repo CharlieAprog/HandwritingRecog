@@ -4,6 +4,12 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import cv2
 from skimage.transform import resize
+from test import create_image
+import re
+from pathlib import Path
+import os
+import uuid
+
 
 # input Image file 
 # output binarized image as np array
@@ -104,6 +110,7 @@ def data_size_stats(data_path):
     return avg_x,avg_y
 
 def CroppedCharAnalysis(data_path):
+    #gets the mean of the cropped data, will be used for finding the std
     data = glob.glob(data_path)
     img_size_all_x = 0
     img_size_all_y = 0
@@ -146,18 +153,18 @@ def CroppedCharAnalysis(data_path):
     print("Average image dimension: ", avg_x, avg_y)
     return avg_x, avg_y,max_x,max_y,img_size_all_x,img_size_all_y
 
-def FindLargestContour(data_path,avg_x,avg_y,max_x,max_y,std_x,std_y):
-    #This function crops and segments the images, removes the outliers, and saves the images in new folders
+def CropAndPadding(data_path,avg_x,avg_y,max_x,max_y,std_x,std_y):
+    #This function crops and segments the images, removes the outliers
     data = glob.glob(data_path)
 
     outliers_number = 0
     outliers_paths=[]
     for img_name in data:
         im_bw = cv2.imread(img_name,0) #Grayscale conversion
-        height, width = im_bw.shape
+        #Binarize images
         retval, thresh_gray = cv2.threshold(im_bw, thresh=100, maxval=255, \
                                             type=cv2.THRESH_BINARY_INV)
-
+        #find contours of images
         contours, image= cv2.findContours(thresh_gray, cv2.RETR_LIST, \
                                                       cv2.CHAIN_APPROX_SIMPLE)
 
@@ -171,18 +178,28 @@ def FindLargestContour(data_path,avg_x,avg_y,max_x,max_y,std_x,std_y):
                 mx = x, y, w, h
                 mx_area = area
         x, y, w, h = mx
-
+        #biggest bounding box is character: crop image
         roi = thresh_gray[y:y + h, x:x + w]
         height,width= roi.shape
-        #Keep data path to not save outlier in the future
 
-        if (height >= avg_y +4*std_y)  or (width >= avg_x + 4*std_x):
+        #Keep data path of outlier:
+        if (height >= avg_y +4*std_y) or (width >= avg_x + 4*std_x):
             outliers_number+=1
             outliers_paths.append(img_name)
+            f, axarr = plt.subplots(2, 2)
+            axarr[0,1].imshow(roi,cmap='gray')
+            plt.show()
+            print(img_name)
 
-    print('Outlier number is :',outliers_number)
-    #print(outliers_paths)
+        if (height/width) >= 1.5  or (width/height) >= 1.5:
+            f, axarr = plt.subplots(2, 2)
+            axarr[0, 1].imshow(roi, cmap='gray')
+            plt.show()
+            print(img_name)
+            print('height/width outlier')
 
+
+    print('Number of outliers to be removed:',outliers_number)
     #extract max dimensions after outlier removal for padding
     max_x = 0
     max_y = 0
@@ -215,9 +232,11 @@ def FindLargestContour(data_path,avg_x,avg_y,max_x,max_y,std_x,std_y):
             if width > max_x:
                 max_x = width
     print(max_x,max_y,'new max dimensions after outlier removal.')
+
     #now pad according to max dimensions and save
     for img_name in data:
         if img_name not in outliers_paths:
+            img_label =  getlabel(img_name)
             im_bw = cv2.imread(img_name, 0)  # Grayscale conversion
 
             retval, thresh_gray = cv2.threshold(im_bw, thresh=100, maxval=255, \
@@ -239,18 +258,22 @@ def FindLargestContour(data_path,avg_x,avg_y,max_x,max_y,std_x,std_y):
 
             roi = thresh_gray[y:y + h, x:x + w]
             height, width = roi.shape
-
+            #pad image according to max dimensions after outlier removal
             paddedroi = cv2.copyMakeBorder(roi, max_y - height, 0, 0,max_x-width, cv2.BORDER_CONSTANT, 255)
+            #print comparison between padded and original segmented image
+            #f, axarr = plt.subplots(2, 2)
+            #axarr[0,0].imshow(paddedroi,cmap='gray')
+            #axarr[0,1].imshow(roi,cmap='gray')
+            #plt.show()
 
-            f, axarr = plt.subplots(2, 2)
-            axarr[0,0].imshow(paddedroi,cmap='gray')
-            axarr[0,1].imshow(roi,cmap='gray')
-            plt.show()
-            print(max_y,max_x,' These are the max dimensions')
-            height,width = paddedroi.shape
-            print(height,width,' This is  the padded dimensions of our given char image')
-            
+            #save processed images in new folder
+            saveimages(img_label,paddedroi)
+        #print new max dimension
+        #print(max_y,max_x,' These are the max dimensions')
+
+
 def findstd(data_path,avg_x,avg_y,img_size_all_x,img_size_all_y):
+    #get the standard devation  of the data after the cropping
     data = glob.glob(data_path)
     std_y = 0
     std_x = 0
@@ -286,16 +309,31 @@ def findstd(data_path,avg_x,avg_y,img_size_all_x,img_size_all_y):
     print( std_x, std_y )
     return std_x,std_y
 
+def getlabel(img_name):
+    #Regex for label extraction
+    result = re.search(r'(?<=\\).+(?=\s*\\)', str(img_name))
+    return result.group(0)
 
+def saveimages(img_label,img):
+    #saves the images into folders
+    directory = os.path.join('data\cropped-padded-img-data',img_label)
+    Path(directory).mkdir(parents=True, exist_ok=True)
+    img = Image.fromarray(img)
+
+    png = '.png'
+    photoname = img_label + str(uuid.uuid4())
+    photoname = photoname + png
+
+    img.save(os.path.join(directory, photoname), 'PNG')
 
 #Data investigation before crop
 avg_x,avg_y = data_size_stats("data/monkbrill/*/*.pgm")
 #Get stats for cropped images
-avg_x, avg_y,max_x,max_y, img_size_all_x, img_size_all_y = CroppedCharAnalysis("data/monkbrill/*/*.pgm")
+avg_x,avg_y,max_x,max_y, img_size_all_x, img_size_all_y = CroppedCharAnalysis("data/monkbrill/*/*.pgm")
 #find standard deviation of new cropped dataset
 std_x,std_y = findstd("data/monkbrill/*/*.pgm",avg_x,avg_y,img_size_all_x,img_size_all_y)
 #create new dataset, pad according to max dimensions, save
-FindLargestContour("data/monkbrill/*/*.pgm",avg_x,avg_y,max_x,max_y,std_x,std_y)
+CropAndPadding("data/monkbrill/*/*.pgm",avg_x,avg_y,max_x,max_y,std_x,std_y)
 
 
 
