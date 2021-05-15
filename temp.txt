@@ -1,0 +1,29 @@
+image = rotateImage(img_path)
+mid_lines, top_line, bottom_line, line_height = getLines(image)
+binary_image = get_binary(image)
+mid_sections = getMidSections(mid_lines, binary_image)
+
+# Segment all the lines using the A* algorithm
+line_segments = []
+# for section in mid_sections:
+# nmap = image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
+section = mid_sections[3]
+offset_from_top = section[0]
+
+plt.figure(figsize=(20, 20))
+plt.imshow(invert(section), cmap="gray")
+path = np.array(astar(section, (int(section.shape[0] / 2), 0), (int(section.shape[0] / 2), section.shape[1] - 1)))
+plt.plot(path[:, 1], path[:, 0])
+plt.show()
+offset_from_top = section[0]
+# path[:, 0] += offset_from_top
+line_segments.append(path)
+
+
+# line_segments = []
+# # len(hpp_clusters): number of extracted segments (lines)
+# for section in mid_sections:
+#     offset_from_top = section[0]
+#     path = np.array(astar(section, (int(section.shape[0] / 2), 0), (int(section.shape[0] / 2), section.shape[1] - 1)))
+#     path[:, 0] += offset_from_top
+#     line_segments.append(path)
