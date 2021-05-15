@@ -12,7 +12,6 @@ plt.show()
 
 from skimage.filters import sobel
 import numpy as np
-
 def horizontal_projections(sobel_image):
     return np.sum(sobel_image, axis=1)  
 
