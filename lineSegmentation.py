@@ -457,5 +457,3 @@ plotImageAndHistLines(binary_image, mid_lines, paths)
 # for path in paths:
 #     plt.plot(path[:, 1], path[:, 0], color="g")
 # plt.show()
-
-# test
