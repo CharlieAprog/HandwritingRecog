@@ -6,6 +6,9 @@ from skimage.filters import sobel
 
 
 import numpy as np
+import csv
+import os
+import glob
 import PIL
 from PIL import Image
 import PIL.ImageOps
@@ -17,11 +20,47 @@ from matplotlib import pyplot as plt
 import pprint
 from heapq import *
 
-# img_path = 'handwritten1.jpg'
-img_path = 'data/image-data/binaryRenamed/11.jpg'
 
-# image = Image.open(img_path)
-# image = PIL.ImageOps.invert(image)
+# ------------------------- Plotting functions -------------------------
+def plotHist(hist, y_threshold):
+    fs = 25
+    plt.figure(figsize=(16, 12))
+    plt.plot(hist)
+    plt.axhline(y=y_threshold, color="r", linestyle="-")
+    plt.ylim(0, max(hist) * 1.1)
+    plt.xlabel("Row", fontsize=fs)
+    plt.ylabel("Black pixels", fontsize=fs)
+    plt.title("Binary image black pixel counting result", fontsize=fs)
+    plt.yticks(fontsize=fs - 5)
+    plt.xticks(fontsize=fs - 5)
+    plt.grid()
+    plt.show()
+
+
+def plotHistLinesOnImage(newImage, midlines):
+    plt.figure(figsize=(16, 12))
+    plt.imshow(newImage, cmap="gray")
+    for i in range(len(midlines)):
+        for idx, loc in enumerate(midlines[i]):
+            if idx == 0:
+                plt.axhline(y=loc, color="r", linestyle="-")
+            else:
+                plt.axhline(y=loc, color="b", linestyle="-")
+    plt.show()
+
+
+def plotPathsNextToImage(binary_image, line_segments):
+    fig, ax = plt.subplots(figsize=(20,10), ncols=2)
+    for path in line_segments:
+        ax[1].plot((path[:,1]), path[:,0])
+    ax[1].axis("off")
+    ax[0].axis("off")
+    ax[1].imshow(binary_image, cmap="gray")
+    ax[0].imshow(binary_image, cmap="gray")
+    plt.show()
+# ------------------------- Plotting functions -------------------------
+
+# ------------------------- Hough Transform -------------------------
 def rotateImage(img_path):
     image = cv2.imread(img_path, 0)
     image = cv2.bitwise_not(image)
@@ -82,7 +121,7 @@ def rotateImage(img_path):
     print(180 - angle_difference)  # Subtracting from 180 to show it as the small angle between two lines
 
     return newImage
-
+# ------------------------- Hough Transform -------------------------
 
 # ------------------------- Histogram part -------------------------
 def getLines(newImage):
@@ -114,9 +153,6 @@ def getLines(newImage):
              "lh": p[0] + len(p[1]) - p[0]}
         )
 
-    # Post-processing of lines
-    # -------------------------------------------------
-
     # Filtering line height outliers
     min_height = calc_outlier(line_heights)
     thr_peaks_filtered = []
@@ -139,8 +175,7 @@ def getLines(newImage):
         else: 
             if locations[idx][1] - locations[idx][0] > min_distance:
                 locations_new.append(locations[idx])
-                break
-            else: break
+            break
         
         idx2 = 1
         while distance < min_distance:
@@ -152,14 +187,16 @@ def getLines(newImage):
             idx2 += 1
         idx += idx2
 
-    # Adding buffer, based on average line height, to each line
-    avg_lh = np.mean(line_heights)
-    for i in range(len(locations_new)):
-        for idx, loc in enumerate(locations_new[i]):
-            if idx == 0:
-                locations_new[i][idx] -= int(avg_lh // 6)  # top lines are pushed up
-            else:
-                locations_new[i][idx] += int(avg_lh // 6)  # bottom lines are pushed down
+    # Adding buffer, based on average height of the NEW (!) lines, to each line that is too small
+    line_heights_new = [x[1]-x[0] for x in locations_new]
+    avg_lh = np.mean(line_heights_new)
+    for idx, loc in enumerate(locations_new):
+        if line_heights_new[idx] < avg_lh:
+            for i in range(len(loc)):
+                if idx == 0:
+                    locations_new[idx][i] -= int(avg_lh // 6)  # top lines are pushed up
+                else:
+                    locations_new[idx][i] += int(avg_lh // 6)  # bottom lines are pushed down
 
     #obtaining the locations of the inbetween sections
     mid_lines = []
@@ -170,55 +207,20 @@ def getLines(newImage):
     top_line = locations_new[0][0] - int(thr_peaks[0]['lh'] / 20)
     bottom_line = locations_new[-1][1] + int(thr_peaks[-1]['lh'] / 2)
 
-
-    # -------------------------------------------------
-    #plotImageAndHistLines(newImage,locations_new)
     return mid_lines, top_line, bottom_line, line_heights, hist, thr_num
 
-def calc_outlier(data):
-    # method1: interquartile
-    # q3, q1 = np.percentile(data, [75, 25])
-    # iqr = q3 - q1
-    # outlier = q1 - 1.5 * iqr
-    
-    # method2: standard deviation
-    outlier = np.mean(data) - np.std(data)
+
+def calc_outlier(data, method="std"):
+    if method == "iqr":
+        # method1: interquartile
+        q3, q1 = np.percentile(data, [75, 25])
+        iqr = q3 - q1
+        outlier = q1 - 1.5 * iqr
+    else:
+        # method2: standard deviation
+        outlier = np.mean(data) - np.std(data)
     return outlier
 
-def plotHist(hist, y_threshold):
-    fs = 25
-    plt.figure(figsize=(16, 12))
-    plt.plot(hist)
-    plt.axhline(y=y_threshold, color="r", linestyle="-")
-    plt.ylim(0, max(hist) * 1.1)
-    plt.xlabel("Row", fontsize=fs)
-    plt.ylabel("Black pixels", fontsize=fs)
-    plt.title("Binary image black pixel counting result", fontsize=fs)
-    plt.yticks(fontsize=fs - 5)
-    plt.xticks(fontsize=fs - 5)
-    plt.grid()
-    plt.show()
-
-
-def plotImageAndHistLines(newImage, midlines):
-    plt.figure(figsize=(16, 12))
-    plt.imshow(newImage, cmap="gray")
-    for i in range(len(midlines)):
-        for idx, loc in enumerate(midlines[i]):
-            if idx == 0:
-                plt.axhline(y=loc, color="r", linestyle="-")
-            else:
-                plt.axhline(y=loc, color="b", linestyle="-")
-    plt.show()
-
-
-# def plotImageAndLines(image, lines):
-#     plt.figure(figsize=(16, 12))
-#     plt.imshow(image)
-#     for line in lines:
-#         for p in line:
-#             plt.plot(p)
-#     plt.show()
 
 def get_binary(img):
     mean = np.mean(img)
@@ -289,8 +291,10 @@ def astar(array, start, goal):
                 heappush(oheap, (fscore[neighbor], neighbor))
     return []
 
+
 def horizontal_projections(sobel_image):
     return np.sum(sobel_image, axis=1) 
+
 
 def path_exists(window_image):
     #very basic check first then proceed to A* check
@@ -304,6 +308,7 @@ def path_exists(window_image):
         return True
     
     return False
+
 
 def get_road_block_regions(nmap):
     road_blocks = []
@@ -324,6 +329,7 @@ def get_road_block_regions(nmap):
             
     return road_blocks
 
+
 def group_the_road_blocks(road_blocks):
     #group the road blocks
     road_blocks_cluster_groups = []
@@ -341,58 +347,74 @@ def group_the_road_blocks(road_blocks):
 
     return road_blocks_cluster_groups
 
+def find_paths(hpp_clusters, binary_image):
+    count = 0
+    for cluster_of_interest in hpp_clusters:
+        print(count)
+        count += 1
+        nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
+        road_blocks = get_road_block_regions(nmap)
+        road_blocks_cluster_groups = group_the_road_blocks(road_blocks)
+        #create the doorways
+        for index, road_blocks in enumerate(road_blocks_cluster_groups):
+            #a = road_blocks[0]
+            #b = road_blocks[1]+10
+            window_image = nmap[:, road_blocks[0]: road_blocks[1]+10]
+            #fig, axes = plt.subplots(3, 1, figsize=(10, 10))
+            #axes[0].imshow(invert(binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]), cmap="gray")
+            #axes[1].imshow(invert(binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10]), cmap="gray")
+            #temp = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10][int(window_image.shape[0]/2),:]
+            binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10][int(window_image.shape[0]/2),:] *= 0
+            #axes[2].imshow(invert(binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10]), cmap="gray")
+            #plt.show()
+
+    paths = []
+    for i, cluster_of_interest in tqdm(enumerate(hpp_clusters)):
+        nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
+        path = np.array(astar(nmap, (int(nmap.shape[0]/2), 0), (int(nmap.shape[0]/2),nmap.shape[1]-1)))
+        offset_from_top = cluster_of_interest[0]
+        path[:,0] += offset_from_top
+        paths.append(path)
+
+    # TODO: Replace this with the top/bottom line that we already have from getLine()
+    # add an extra line to the line segments array which represents the last bottom row on the image
+    last_bottom_row = np.flip(np.column_stack(
+        ((np.ones((binary_image.shape[1],)) * binary_image.shape[0]), np.arange(binary_image.shape[1]))).astype(int),
+                              axis=0)
+    paths.append(last_bottom_row)
+    return paths
+
+
+def save_path(path, file_name):
+    """ Saves a numpy array into csv format for a SINGLE path """
+    with open(file_name, 'w') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',')
+        for row in path:
+            csvwriter.writerow(row)
+
+
+def load_path(file_name):
+    """ Loads a csv formatted path file into a numpy array. """
+    return np.loadtxt(file_name, delimiter=',', dtype=int)
 # ------------------------- A* algorithm part ----------------------
 
+
+img_path = 'data/image-data/binaryRenamed/11.jpg'
 image = rotateImage(img_path)
 mid_lines, top_line, bottom_line, line_height, hist, thr_num = getLines(image)
-# plotHist(hist, thr_num)
 binary_image = get_binary(image)
-#mid_sections = getMidSections(mid_lines, binary_image)
-hpp_clusters = mid_lines
+paths = find_paths(mid_lines, binary_image)
+
+# save paths
+new_folder_path = f"data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
+os.makedirs(new_folder_path, exist_ok=True)
+for idx, path in enumerate(paths):
+    save_path(path, f"{new_folder_path}/path_{idx}.csv")
+
+# load paths
+# paths_list = glob.glob(f'{new_folder_path}/*.csv')
+# paths_loaded = []
+# for path in paths_list:
+#     paths_loaded.append(load_path(path))
 
 
-count = 0
-for cluster_of_interest in hpp_clusters:
-    print(count)
-    count +=1
-    nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
-    road_blocks = get_road_block_regions(nmap)
-    road_blocks_cluster_groups = group_the_road_blocks(road_blocks)
-    #create the doorways
-    for index, road_blocks in enumerate(road_blocks_cluster_groups):
-        #a = road_blocks[0]
-        #b = road_blocks[1]+10
-        window_image = nmap[:, road_blocks[0]: road_blocks[1]+10]
-        #fig, axes = plt.subplots(3, 1, figsize=(10, 10))
-        #axes[0].imshow(invert(binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]), cmap="gray")
-        #axes[1].imshow(invert(binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10]), cmap="gray")
-        #temp = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10][int(window_image.shape[0]/2),:]
-        binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10][int(window_image.shape[0]/2),:] *= 0
-        #axes[2].imshow(invert(binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10]), cmap="gray")
-        #plt.show()
-
-
-line_segments = []
-for i, cluster_of_interest in tqdm(enumerate(hpp_clusters)):
-    nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
-    path = np.array(astar(nmap, (int(nmap.shape[0]/2), 0), (int(nmap.shape[0]/2),nmap.shape[1]-1)))
-    offset_from_top = cluster_of_interest[0]
-    path[:,0] += offset_from_top
-    line_segments.append(path)
-
-
-fig, ax = plt.subplots(figsize=(20,10), ncols=2)
-for path in line_segments:
-    ax[1].plot((path[:,1]), path[:,0])
-ax[1].axis("off")
-ax[0].axis("off")
-ax[1].imshow(binary_image, cmap="gray")
-ax[0].imshow(binary_image, cmap="gray")
-plt.show()
-
-# -----------------------------------------------------------
-
-# TODO: Replace this with the top/bottom line that we already have from getLine()
-# add an extra line to the line segments array which represents the last bottom row on the image
-last_bottom_row = np.flip(np.column_stack(((np.ones((binary_image.shape[1],))*binary_image.shape[0]), np.arange(binary_image.shape[1]))).astype(int), axis=0)
-line_segments.append(last_bottom_row)
