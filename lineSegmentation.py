@@ -114,9 +114,6 @@ def getLines(newImage):
              "lh": p[0] + len(p[1]) - p[0]}
         )
 
-     
-    
-    
     # Post-processing of lines
     # -------------------------------------------------
 
@@ -126,15 +123,6 @@ def getLines(newImage):
     for i in range(len(thr_peaks)):
         if thr_peaks[i]["lh"] > min_height:
             thr_peaks_filtered.append(thr_peaks[i])
-
-    # Adding buffer, based on average line height, to each line
-    avg_lh = np.mean(line_heights)
-    for i in range(len(thr_peaks_filtered)):
-        for idx, loc in enumerate(thr_peaks_filtered[i]["loc"]):
-            if idx == 0:
-                thr_peaks_filtered[i]["loc"][idx] -= int(avg_lh // 6)  # top lines are pushed up
-            else:
-                thr_peaks_filtered[i]["loc"][idx] += int(avg_lh // 6)  # bottom lines are pushed down
 
     #combining lines that are too close together
     locations = [x['loc'] for x in thr_peaks]
@@ -161,9 +149,17 @@ def getLines(newImage):
                 distance = distances[idx + idx2]
             else:
                 break
-            idx2  += 1
+            idx2 += 1
         idx += idx2
 
+    # Adding buffer, based on average line height, to each line
+    avg_lh = np.mean(line_heights)
+    for i in range(len(locations_new)):
+        for idx, loc in enumerate(locations_new[i]):
+            if idx == 0:
+                locations_new[i][idx] -= int(avg_lh // 6)  # top lines are pushed up
+            else:
+                locations_new[i][idx] += int(avg_lh // 6)  # bottom lines are pushed down
 
     #obtaining the locations of the inbetween sections
     mid_lines = []
@@ -355,7 +351,6 @@ binary_image = get_binary(image)
 hpp_clusters = mid_lines
 
 
-
 count = 0
 for cluster_of_interest in hpp_clusters:
     print(count)
@@ -377,7 +372,6 @@ for cluster_of_interest in hpp_clusters:
         #plt.show()
 
 
-
 line_segments = []
 for i, cluster_of_interest in tqdm(enumerate(hpp_clusters)):
     nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
@@ -386,17 +380,7 @@ for i, cluster_of_interest in tqdm(enumerate(hpp_clusters)):
     path[:,0] += offset_from_top
     line_segments.append(path)
 
-# -----------------------------------------------------------
 
-cluster_of_interest = hpp_clusters[1]
-offset_from_top = cluster_of_interest[0]
-nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
-path = np.array(astar(nmap, (int(nmap.shape[0]/2), 0), (int(nmap.shape[0]/2),nmap.shape[1]-1)))
-plt.plot(path[:,1], path[:,0])
-
-# -----------------------------------------------------------
-
-offset_from_top = cluster_of_interest[0]
 fig, ax = plt.subplots(figsize=(20,10), ncols=2)
 for path in line_segments:
     ax[1].plot((path[:,1]), path[:,0])
@@ -408,60 +392,7 @@ plt.show()
 
 # -----------------------------------------------------------
 
-## add an extra line to the line segments array which represents the last bottom row on the image
+# TODO: Replace this with the top/bottom line that we already have from getLine()
+# add an extra line to the line segments array which represents the last bottom row on the image
 last_bottom_row = np.flip(np.column_stack(((np.ones((binary_image.shape[1],))*binary_image.shape[0]), np.arange(binary_image.shape[1]))).astype(int), axis=0)
 line_segments.append(last_bottom_row)
-
-
-########## I commented out the stuff we were using previously because i was able to give the program everything it needed i think
-
-
-# for cluster_of_interest in hpp_clusters:
-#     nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
-#     road_blocks = get_road_block_regions(nmap)
-#     road_blocks_cluster_groups = group_the_road_blocks(road_blocks)
-#     #create the doorways
-#     for index, road_blocks in enumerate(road_blocks_cluster_groups):
-#         window_image = nmap[:, road_blocks[0]: road_blocks[1]+10]
-#         binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10][int(window_image.shape[0]/2),:] *= 0
-
-# # Segment all the lines using the A* algorithm
-
-# line_segments = []
-# for i, cluster_of_interest in enumerate(hpp_clusters):
-#     nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
-#     path = np.array(astar(nmap, (int(nmap.shape[0]/2), 0), (int(nmap.shape[0]/2),nmap.shape[1]-1)))
-#     offset_from_top = cluster_of_interest[0]
-#     path[:,0] += offset_from_top
-#     line_segments.append(path)
-
-
-
-# paths = []
-# line_count = 0
-# for section in tqdm(mid_sections):
-#     print('line number: ',line_count, 'section dimensions: ',section.shape)
-#     # nmap = image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
-#     path = np.array(astar(section, (int(section.shape[0] / 2), 0), (int(section.shape[0] / 2), section.shape[1] - 1)))
-#     print(path.shape)
-#     offset_from_top = int(section.shape[0] / 2) + mid_lines[line_count][0]
-#     line_count += 1
-#     for idx in range(len(path[:, 0])):
-#         path[idx, 0] = path[idx, 0] + offset_from_top
-
-#     paths.append(path)
-
-# plt.figure(figsize=(20, 20))
-# plt.imshow(binary_image, cmap="gray")
-# for path in paths:
-#     plt.plot(path[:, 1], path[:, 0])
-# plt.show()
-
-# line_segments = []
-# # len(hpp_clusters): number of extracted segments (lines)
-# for section in mid_sections:
-#     offset_from_top = section[0]
-#     path = np.array(astar(section, (int(section.shape[0] / 2), 0), (int(section.shape[0] / 2), section.shape[1] - 1)))
-#     path[:, 0] += offset_from_top
-#     line_segments.append(path)
-
