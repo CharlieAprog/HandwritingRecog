@@ -115,10 +115,30 @@ def getLines(newImage):
         )
 
      
+    
+    
+    # Post-processing of lines
+    # -------------------------------------------------
+
+    # Filtering line height outliers
+    min_height = calc_outlier(line_heights)
+    thr_peaks_filtered = []
+    for i in range(len(thr_peaks)):
+        if thr_peaks[i]["lh"] > min_height:
+            thr_peaks_filtered.append(thr_peaks[i])
+
+    # Adding buffer, based on average line height, to each line
+    avg_lh = np.mean(line_heights)
+    for i in range(len(thr_peaks_filtered)):
+        for idx, loc in enumerate(thr_peaks_filtered[i]["loc"]):
+            if idx == 0:
+                thr_peaks_filtered[i]["loc"][idx] -= int(avg_lh // 6)  # top lines are pushed up
+            else:
+                thr_peaks_filtered[i]["loc"][idx] += int(avg_lh // 6)  # bottom lines are pushed down
+
+    #combining lines that are too close together
     locations = [x['loc'] for x in thr_peaks]
     distances = [locations[sec + 1][0] - locations[sec][1] for sec in range(len(locations) - 1)]
-    
-    #combining lines that are too close together
     min_distance = calc_outlier(distances)
     locations_new = []
     idx = 0
@@ -154,25 +174,7 @@ def getLines(newImage):
     top_line = locations_new[0][0] - int(thr_peaks[0]['lh'] / 20)
     bottom_line = locations_new[-1][1] + int(thr_peaks[-1]['lh'] / 2)
 
-    # Post-processing of lines
-    # -------------------------------------------------
-    # combine segments that are too close
-    
-    # Filtering line height outliers
-    min_height = calc_outlier(line_heights)
-    thr_peaks_filtered = []
-    for i in range(len(thr_peaks)):
-        if thr_peaks[i]["lh"] > min_height:
-            thr_peaks_filtered.append(thr_peaks[i])
 
-    # Adding buffer, based on average line height, to each line
-    avg_lh = np.mean(line_heights)
-    for i in range(len(thr_peaks_filtered)):
-        for idx, loc in enumerate(thr_peaks_filtered[i]["loc"]):
-            if idx == 0:
-                thr_peaks_filtered[i]["loc"][idx] -= avg_lh // 6  # top lines are pushed up
-            else:
-                thr_peaks_filtered[i]["loc"][idx] += avg_lh // 6  # bottom lines are pushed down
     # -------------------------------------------------
     #plotImageAndHistLines(newImage,locations_new)
     return mid_lines, top_line, bottom_line, line_heights, hist, thr_num
@@ -260,9 +262,7 @@ def astar(array, start, goal):
     heappush(oheap, (fscore[start], start))
 
     while oheap:
-
         current = heappop(oheap)[1]
-
         if current == goal:
             data = []
             while current in came_from:
@@ -278,11 +278,9 @@ def astar(array, start, goal):
                 if 0 <= neighbor[1] < array.shape[1]:
                     if array[neighbor[0]][neighbor[1]] == 1:
                         continue
-                else:
-                    # array bound y walls
+                else: # array bound y walls
                     continue
-            else:
-                # array bound x walls
+            else: # array bound x walls
                 continue
 
             if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
@@ -293,11 +291,11 @@ def astar(array, start, goal):
                 gscore[neighbor] = tentative_g_score
                 fscore[neighbor] = tentative_g_score + heuristic(neighbor, goal)
                 heappush(oheap, (fscore[neighbor], neighbor))
-
     return []
 
 def horizontal_projections(sobel_image):
     return np.sum(sobel_image, axis=1) 
+
 def path_exists(window_image):
     #very basic check first then proceed to A* check
     if 0 in horizontal_projections(window_image):
@@ -317,14 +315,13 @@ def get_road_block_regions(nmap):
     
     for col in range(nmap.shape[1]):
         start = col
-        end = col+20
+        end = col+60
         if end > nmap.shape[1]-1:
             end = nmap.shape[1]-1
             needtobreak = True
 
         if path_exists(nmap[:, start:end]) == False:
             road_blocks.append(col)
-            print('roadblock found')
 
         if needtobreak == True:
             break
@@ -338,11 +335,11 @@ def group_the_road_blocks(road_blocks):
     size = len(road_blocks)
     for index, value in enumerate(road_blocks):
         road_blocks_cluster.append(value)
-        if index < size-1 and (road_blocks[index+1] - road_blocks[index]) > 1:
+        if index < size-1 and (road_blocks[index+1] - road_blocks[index]) > 1: #split up the clusters 
             road_blocks_cluster_groups.append([road_blocks_cluster[0], road_blocks_cluster[len(road_blocks_cluster)-1]])
             road_blocks_cluster = []
 
-        if index == size-1 and len(road_blocks_cluster) > 0:
+        if index == size-1 and len(road_blocks_cluster) > 0: 
             road_blocks_cluster_groups.append([road_blocks_cluster[0], road_blocks_cluster[len(road_blocks_cluster)-1]])
             road_blocks_cluster = []
 
@@ -354,12 +351,10 @@ image = rotateImage(img_path)
 mid_lines, top_line, bottom_line, line_height, hist, thr_num = getLines(image)
 # plotHist(hist, thr_num)
 binary_image = get_binary(image)
-mid_sections = getMidSections(mid_lines, binary_image)
+#mid_sections = getMidSections(mid_lines, binary_image)
 hpp_clusters = mid_lines
 
-plt.figure(figsize=(20,20))
-plt.imshow(binary_image[mid_lines[6][0]:mid_lines[6][len(mid_lines[6])-1],:])
-plt.show()
+
 
 count = 0
 for cluster_of_interest in hpp_clusters:
@@ -370,12 +365,17 @@ for cluster_of_interest in hpp_clusters:
     road_blocks_cluster_groups = group_the_road_blocks(road_blocks)
     #create the doorways
     for index, road_blocks in enumerate(road_blocks_cluster_groups):
+        #a = road_blocks[0]
+        #b = road_blocks[1]+10
         window_image = nmap[:, road_blocks[0]: road_blocks[1]+10]
-        binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10][int(window_image.shape[0]/2),:] *= 50
-    if count == 6: # here im trying to see the effect of blasting through 
-        plt.figure(figsize=(20,20))
-        plt.imshow(binary_image[mid_lines[6][0]:mid_lines[6][len(mid_lines[6])-1],:])
-        plt.show()  
+        #fig, axes = plt.subplots(3, 1, figsize=(10, 10))
+        #axes[0].imshow(invert(binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]), cmap="gray")
+        #axes[1].imshow(invert(binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10]), cmap="gray")
+        #temp = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10][int(window_image.shape[0]/2),:]
+        binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10][int(window_image.shape[0]/2),:] *= 0
+        #axes[2].imshow(invert(binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+10]), cmap="gray")
+        #plt.show()
+
 
 
 line_segments = []
@@ -391,9 +391,6 @@ for i, cluster_of_interest in tqdm(enumerate(hpp_clusters)):
 cluster_of_interest = hpp_clusters[1]
 offset_from_top = cluster_of_interest[0]
 nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
-plt.figure(figsize=(20,20))
-plt.imshow(invert(nmap), cmap="gray")
-
 path = np.array(astar(nmap, (int(nmap.shape[0]/2), 0), (int(nmap.shape[0]/2),nmap.shape[1]-1)))
 plt.plot(path[:,1], path[:,0])
 
@@ -405,13 +402,14 @@ for path in line_segments:
     ax[1].plot((path[:,1]), path[:,0])
 ax[1].axis("off")
 ax[0].axis("off")
-ax[1].imshow(img, cmap="gray")
-ax[0].imshow(img, cmap="gray")
+ax[1].imshow(binary_image, cmap="gray")
+ax[0].imshow(binary_image, cmap="gray")
+plt.show()
 
 # -----------------------------------------------------------
 
 ## add an extra line to the line segments array which represents the last bottom row on the image
-last_bottom_row = np.flip(np.column_stack(((np.ones((img.shape[1],))*img.shape[0]), np.arange(img.shape[1]))).astype(int), axis=0)
+last_bottom_row = np.flip(np.column_stack(((np.ones((binary_image.shape[1],))*binary_image.shape[0]), np.arange(binary_image.shape[1]))).astype(int), axis=0)
 line_segments.append(last_bottom_row)
 
 
