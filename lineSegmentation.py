@@ -400,21 +400,21 @@ def load_path(file_name):
 
 
 img_path = 'data/image-data/binaryRenamed/11.jpg'
-image = rotateImage(img_path)
-mid_lines, top_line, bottom_line, line_height, hist, thr_num = getLines(image)
-binary_image = get_binary(image)
-paths = find_paths(mid_lines, binary_image)
-
-# save paths
 new_folder_path = f"data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
-os.makedirs(new_folder_path, exist_ok=True)
-for idx, path in enumerate(paths):
-    save_path(path, f"{new_folder_path}/path_{idx}.csv")
+if not os.path.exists(new_folder_path):
+    # run image-processing
+    image = rotateImage(img_path)
+    mid_lines, top_line, bottom_line, line_height, hist, thr_num = getLines(image)
+    binary_image = get_binary(image)
+    paths = find_paths(mid_lines, binary_image)
 
-# load paths
-# paths_list = glob.glob(f'{new_folder_path}/*.csv')
-# paths_loaded = []
-# for path in paths_list:
-#     paths_loaded.append(load_path(path))
-
-
+    # save paths
+    os.makedirs(new_folder_path, exist_ok=True)
+    for idx, path in enumerate(paths):
+        save_path(path, f"{new_folder_path}/path_{idx}.csv")
+else:
+    # load paths
+    paths_list = glob.glob(f'{new_folder_path}/*.csv')
+    paths_loaded = []
+    for path in paths_list:
+        paths_loaded.append(load_path(path))
