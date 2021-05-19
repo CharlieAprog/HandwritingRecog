@@ -133,7 +133,7 @@ def getLines(newImage):
     temp = []  # list of pixels in a peak's neighborhood from left to right
     thr = {}  # dictionary containing lines of interest
     c = 0  # counter variable
-    thr_num = max(hist) * 0.1
+    thr_num = max(hist) * 0.09
     for col, p in enumerate(hist):  # if pixel is above thresh, add it to temp
         if p >= thr_num and hist[col - 1] > thr_num and col > 0:
             temp.append(p)
@@ -163,7 +163,8 @@ def getLines(newImage):
     #combining lines that are too close together
     locations = [x['loc'] for x in thr_peaks]
     distances = [locations[sec + 1][0] - locations[sec][1] for sec in range(len(locations) - 1)]
-    min_distance = calc_outlier(distances) if calc_outlier(distances)  > 23 else 23
+    min_distance = calc_outlier(distances) if calc_outlier(distances)  > 18 else 18
+    print(distances,'\n', min_distance)
     #min_distance = int(max(distances) /6) if int(max(distances) /6) > 22 else 22
     locations_new = []
     idx = 0
@@ -189,43 +190,51 @@ def getLines(newImage):
         idx += idx2
 
     # Adding buffer, based on average height of the NEW (!) lines, to each line that is too small
-    # line_heights_new = [x[1]-x[0] for x in locations_new]
-    # avg_lh = np.mean(line_heights_new)
-    # for idx, loc in enumerate(locations_new):
-    #     if line_heights_new[idx] < avg_lh:
-    #         for i in range(len(loc)):
-    #             if idx == 0:
-    #                 locations_new[idx][i] -= int(avg_lh // 6)  # top lines are pushed up
-    #             else:
-    #                 locations_new[idx][i] += int(avg_lh // 6)  # bottom lines are pushed down
+    line_heights_new = [x[1]-x[0] for x in locations_new]
+    avg_lh = np.mean(line_heights_new)
+    for idx, loc in enumerate(locations_new):
+        if line_heights_new[idx] < avg_lh:
+            for i in range(len(loc)):
+                if idx == 0:
+                    locations_new[idx][i] -= int(avg_lh / 5 ) # top lines are pushed up
+                else:
+                    locations_new[idx][i] += int(avg_lh / 6)  # bottom lines are pushed down
 
     #remove sections that are left over than have a low hight
     locations_final = []
     mid_distances = [line[1] - line[0] for line in locations_new]
-    min_height = calc_outlier(mid_distances) /3
-    print(min_height,'\n',mid_distances)
+    min_height = int(calc_outlier(mid_distances) /3) + 2
     for idx in range(len(mid_distances)):
         if mid_distances[idx] >= min_height:
             locations_final.append(locations_new[idx])
 
     #obtaining the locations of the inbetween sections
     mid_lines = []
-    top_line = [locations_final[0][0] - int(thr_peaks[0]['lh']) - int(thr_peaks[0]['lh'] * 1.5) ,locations_final[0][0] - int(thr_peaks[0]['lh'] / 20)]
+    top_line = [locations_final[0][0] - int(avg_lh*2.5) ,locations_final[0][0] - int(avg_lh)]
     mid_lines.append(top_line)
     for sec in range(len(locations_final) - 1):
-        beginning = locations_final[sec][1]  # bottom line of peak_n
-        end = locations_final[sec + 1][0]  # top line of peak_n+1
-        mid_lines.append([beginning, end])
-    
-    bottom_line = [locations_final[-1][1] + int(thr_peaks[-1]['lh'] / 2), locations_final[-1][1]+ int(min_distance*6)]
-    mid_lines.append(bottom_line)
+        if locations_final[sec][first] < locations_final[sec][second]:
+                beginning = locations_final[sec][1]  # bottom line of peak_n
+                end = locations_final[sec + 1][0]  # top line of peak_n+1
+                mid_lines.append([beginning, end])
 
-    return mid_lines, top_line, bottom_line, line_heights, hist, thr_num
+    mid2 = []
+    for sec in mid_lines:
+        if sec[0] < sec[1]:
+            mid2.append(sec)
+
+    
+    bottom_line = [locations_final[-1][1] + int(avg_lh), locations_final[-1][1]+ int(avg_lh*2)]
+    mid2.append(bottom_line)
+
+    
+
+    return mid2, top_line, bottom_line, line_heights, hist, thr_num
 
 
 def calc_outlier(data, method="std"):
     if method == "iqr":
-        # method1: interquartile
+        # method1: interquartile 
         q3, q1 = np.percentile(data, [75, 25])
         iqr = q3 - q1
         outlier = q1 - 1.5 * iqr
@@ -391,6 +400,7 @@ def find_paths(hpp_clusters, binary_image):
             print('jeez')
             continue 
         path[:,0] += offset_from_top
+        path = [list(step) for step in path]
         paths.append(path)
 
     # TODO: Replace this with the top/bottom line that we already have from getLine()
@@ -409,16 +419,23 @@ def save_path(path, file_name):
         for row in path:
             csvwriter.writerow(row)
 
+def get_key(fp):
+    filename = os.path.splitext(os.path.basename(fp))[0]
+    int_part = filename.split('_')[1]
+    return int(int_part)
 
 def load_path(file_name):
     """ Loads a csv formatted path file into a numpy array. """
     return np.loadtxt(file_name, delimiter=',', dtype=int)
 
 # ------------------------- Obtain paths ----------------------
-img_path = 'data/image-data/binaryRenamed/6.jpg'
+
+image_num = 10
+img_path = f'data/image-data/binaryRenamed/{image_num}.jpg'
 new_folder_path = f"data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
 image = rotateImage(img_path)
 binary_image = get_binary(image)
+
 
 if not os.path.exists(new_folder_path):
     # run image-processing
@@ -433,7 +450,7 @@ if not os.path.exists(new_folder_path):
         save_path(path, f"{new_folder_path}/path_{idx}.csv")
 else:
     # load paths
-    file_paths_list = glob.glob(f'{new_folder_path}/*.csv')
+    file_paths_list = sorted(glob.glob(f'{new_folder_path}/*.csv'), key=get_key)
     paths = [] # a* paths
     sections_loaded = []
     for file_path in file_paths_list:
@@ -441,14 +458,36 @@ else:
         paths.append(line_path)
         #binary_image[]
         
-plotPathsNextToImage(binary_image, paths)
-    # extract sections from binary image determined by path
+
+# extract sections from binary image determined by path
 
 #Assume paths are loaded
+segments = []
+for line in range(len(paths) - 1):
+    segment = []
+    upper = paths[line]
+    lower = paths[line + 1]
+    upperLim = np.min(upper[:,0])
+    lowerLim = np.max(lower[:,0])
+    
+    segments.append(segment)
 
-#  for line in range(len(paths) - 1):
-#     - get min y of upper path  and max Y of lower path coordinates
-#     - create a numpy array with max-min height and width = path_width
-#         - loop through the rows of the new array
-#             - fill in the new array with zeros everywhere, except at the indices where the loaded section has values
+fig, axes = plt.subplots(4, 1, figsize=(10, 6))
+ax = axes.ravel()
+ax[1].imshow(invert(segments[0]), cmap="gray")
+ax[1].imshow(invert(segments[1]), cmap="gray")
+ax[1].imshow(invert(segments[2]), cmap="gray")
+ax[1].imshow(invert(segments[3]), cmap="gray")
+
+
+plt.show()
+
+   
+#plotPathsNextToImage(binary_image, paths)
+
+#plotPathsNextToImage(binary_image, paths)
+# - get min y of upper path  and max Y of lower path coordinates
+# - create a numpy array with max-min height and width = path_width
+#     - loop through the rows of the new array
+#         - fill in the new array with zeros everywhere, except at the indices where the loaded section has values
 
