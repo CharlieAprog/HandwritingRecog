@@ -460,29 +460,88 @@ else:
         
 
 # extract sections from binary image determined by path
-
-#Assume paths are loaded
-segments = []
-for line in range(len(paths) - 1):
-    segment = []
-    upper = paths[line]
-    lower = paths[line + 1]
-    upperLim = np.min(upper[:,0])
-    lowerLim = np.max(lower[:,0])
+line_images = []
+def extract_line_from_image(image, lower_line, upper_line):
+    lower_boundary = np.min(lower_line[:, 0])
+    upper_boundary = np.min(upper_line[:, 0])
+    img_copy = np.copy(image)
+    r, c = img_copy.shape
+    for index in range(c-1):
+        img_copy[0:lower_line[index, 0], index] = 0
+        img_copy[upper_line[index, 0]:r, index] = 0
     
-    segments.append(segment)
+    return img_copy[lower_boundary:upper_boundary, :]
 
-fig, axes = plt.subplots(4, 1, figsize=(10, 6))
-ax = axes.ravel()
-ax[1].imshow(invert(segments[0]), cmap="gray")
-ax[1].imshow(invert(segments[1]), cmap="gray")
-ax[1].imshow(invert(segments[2]), cmap="gray")
-ax[1].imshow(invert(segments[3]), cmap="gray")
+#plot sections
+line_count = len(paths)
+# fig, ax = plt.subplots(figsize=(10,10), nrows=line_count-1)
+for line_index in range(line_count-1):
+    line_image = extract_line_from_image(binary_image, paths[line_index], paths[line_index+1])
+    line_images.append(line_image)
+#     ax[line_index].imshow(invert(line_image), cmap="gray")
+
+# plt.show()
 
 
+from skimage.filters import threshold_otsu
+
+#binarize the image, guassian blur will remove any noise in the image
+first_line = line_images[0]
+thresh = threshold_otsu(first_line)
+binary = first_line > thresh
+
+# find the vertical projection by adding up the values of all pixels along rows
+vertical_projection = np.sum(binary, axis=0)
+
+# plot the vertical projects
+fig, ax = plt.subplots(nrows=2, figsize=(20,10))
+plt.xlim(0, first_line.shape[1])
+ax[0].imshow(binary, cmap="gray")
+ax[1].plot(vertical_projection)
 plt.show()
 
+height = first_line.shape[0]
+
+## we will go through the vertical projections and 
+## find the sequence of consecutive white spaces in the image
+whitespace_lengths = []
+whitespace = 0
+for vp in vertical_projection:
+    if vp == 0:
+        whitespace = whitespace + 1
+    elif vp != 0:
+        if whitespace != 0:
+            whitespace_lengths.append(whitespace)
+        whitespace = 0 # reset whitepsace counter. 
+
+print("whitespaces:", whitespace_lengths)
+avg_white_space_length = np.mean(whitespace_lengths)
+print("average whitespace lenght:", avg_white_space_length)
+
+## find index of whitespaces which are actually long spaces using the avg_white_space_length
+whitespace_length = 0
+divider_indexes = []
+for index, vp in enumerate(vertical_projection):
+    if vp == 0:
+        whitespace_length = whitespace_length + 1
+    elif vp != 0:
+        if whitespace_length != 0 and whitespace_length > avg_white_space_length* 8/9:
+            divider_indexes.append(index-int(whitespace_length/2))
+            whitespace_length = 0 # reset it
+            
+print(divider_indexes)
+
+# lets create the block of words from divider_indexes
+divider_indexes = np.array(divider_indexes)
+dividers = np.column_stack((divider_indexes[:-1],divider_indexes[1:]))
+
+# now plot the findings
+fig, ax = plt.subplots(nrows=len(dividers), figsize=(5,6))
+for index, window in enumerate(dividers):
+    ax[index].axis("off")
+    ax[index].imshow(first_line[:,window[0]:window[1]], cmap="gray")
    
+plt.show()
 #plotPathsNextToImage(binary_image, paths)
 
 #plotPathsNextToImage(binary_image, paths)
