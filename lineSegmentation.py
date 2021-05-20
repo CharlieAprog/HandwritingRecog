@@ -1,3 +1,4 @@
+from numpy.core.fromnumeric import nonzero
 from skimage.transform import hough_line, hough_line_peaks, probabilistic_hough_line
 from skimage.feature import canny
 from skimage.util import invert
@@ -486,7 +487,7 @@ for line_index in range(line_count-1):
 from skimage.filters import threshold_otsu
 
 #binarize the image, guassian blur will remove any noise in the image
-first_line = line_images[0]
+first_line = line_images[1]
 thresh = threshold_otsu(first_line)
 binary = first_line > thresh
 
@@ -506,29 +507,39 @@ height = first_line.shape[0]
 ## find the sequence of consecutive white spaces in the image
 whitespace_lengths = []
 whitespace = 0
-for vp in vertical_projection:
-    if vp == 0:
+
+for idx in range(len(vertical_projection)):
+    if vertical_projection[idx] == 0:
         whitespace = whitespace + 1
-    elif vp != 0:
+    elif vertical_projection[idx] != 0:
         if whitespace != 0:
-            whitespace_lengths.append(whitespace)
+            whitespace_lengths.append(whitespace) 
         whitespace = 0 # reset whitepsace counter. 
+    if idx == len(vertical_projection)-1:
+        print('yee')
+        whitespace_lengths.append(whitespace)
+
 
 print("whitespaces:", whitespace_lengths)
 avg_white_space_length = np.mean(whitespace_lengths)
 print("average whitespace lenght:", avg_white_space_length)
 
+num_of_spaces = [x for x in whitespace_lengths if x > avg_white_space_length]
+print(num_of_spaces)
 ## find index of whitespaces which are actually long spaces using the avg_white_space_length
 whitespace_length = 0
 divider_indexes = []
+
 for index, vp in enumerate(vertical_projection):
     if vp == 0:
         whitespace_length = whitespace_length + 1
+        if len(divider_indexes) == len(num_of_spaces) - 1  and whitespace_length > avg_white_space_length:
+            divider_indexes.append(index+int(whitespace_length/2))
     elif vp != 0:
-        if whitespace_length != 0 and whitespace_length > avg_white_space_length* 8/9:
+        if whitespace_length != 0 and whitespace_length > avg_white_space_length:
             divider_indexes.append(index-int(whitespace_length/2))
             whitespace_length = 0 # reset it
-            
+    
 print(divider_indexes)
 
 # lets create the block of words from divider_indexes
