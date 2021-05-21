@@ -23,7 +23,27 @@ from heapq import *
 
 
 # ------------------------- Plotting functions -------------------------
-def plotHist(hist, y_threshold):
+def handle_saving(plotting_function):
+    def wrapper_function(*args, **kwargs):
+        plotting_function(*args, **kwargs)
+        save, folder_path, overwrite_path = [x for x in kwargs.values()]
+        if not save:
+            plt.show()
+        else:
+            img_path = f"{folder_path}{os.path.sep}{plotting_function.__name__}_img{image_num}.png"
+            if not os.path.exists(f"{folder_path}{os.path.sep}{plotting_function.__name__}_img{image_num}.png"):
+                plt.savefig(img_path)
+                print(f"Image {os.path.basename(img_path)} has been saved. Overwriting=0.")
+            elif overwrite_path:
+                plt.savefig(img_path)
+                print(f"Image {os.path.basename(img_path)} has been saved. Overwriting=1.")
+            else:
+                print(f"Image path already exists: [{img_path}]")
+    return wrapper_function
+
+
+@handle_saving
+def plotHist(hist, y_threshold, save=False, folder_path=None, overwrite_path=False):
     fs = 25
     plt.figure(figsize=(10, 6))
     plt.plot(hist)
@@ -35,10 +55,10 @@ def plotHist(hist, y_threshold):
     plt.yticks(fontsize=fs - 5)
     plt.xticks(fontsize=fs - 5)
     plt.grid()
-    plt.show()
 
 
-def plotHistLinesOnImage(newImage, midlines):
+@handle_saving
+def plotHistLinesOnImage(newImage, midlines, save=False, folder_path=None, overwrite_path=False):
     plt.figure(figsize=(10, 6))
     plt.imshow(newImage, cmap="gray")
     for i in range(len(midlines)):
@@ -47,21 +67,21 @@ def plotHistLinesOnImage(newImage, midlines):
                 plt.axhline(y=loc, color="r", linestyle="-")
             else:
                 plt.axhline(y=loc, color="b", linestyle="-")
-    plt.show()
 
 
-def plotPathsNextToImage(binary_image, line_segments):
-    fig, ax = plt.subplots(figsize=(10,6), ncols=2)
+@handle_saving
+def plotPathsNextToImage(binary_image, line_segments, save=False, folder_path=None, overwrite_path=False):
+    fig, ax = plt.subplots(figsize=(16, 12), ncols=2)
     for path in line_segments:
         ax[1].plot((path[:,1]), path[:,0])
     ax[1].axis("off")
     ax[0].axis("off")
     ax[1].imshow(binary_image, cmap="gray")
     ax[0].imshow(binary_image, cmap="gray")
-    plt.show()
 
 
-def plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage):
+@handle_saving
+def plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage, save=False, folder_path=None, overwrite_path=False):
     fig, axes = plt.subplots(1, 4, figsize=(15, 6))
     ax = axes.ravel()
 
@@ -91,7 +111,6 @@ def plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage):
     ax[3].imshow(newImage, cmap='gray')
 
     plt.tight_layout()
-    plt.show()
 # ------------------------- Plotting functions -------------------------
 
 # ------------------------- Hough Transform -------------------------
@@ -128,8 +147,6 @@ def rotateImage(img_path):
     return newImage
 # ------------------------- Hough Transform -------------------------
 
-img_path = 'data/image-data/binaryRenamed/1.jpg'
-
 # ------------------------- Histogram part -------------------------
 def getLines(newImage):
     hist = []
@@ -163,7 +180,7 @@ def getLines(newImage):
     #combining lines that are too close together
     locations = [x['loc'] for x in thr_peaks]
     distances = [locations[sec + 1][0] - locations[sec][1] for sec in range(len(locations) - 1)]
-    min_distance = calc_outlier(distances) if calc_outlier(distances)  > 18 else 18
+    min_distance = calc_outlier(distances) if calc_outlier(distances) > 18 else 18
     print(distances,'\n', min_distance)
     #min_distance = int(max(distances) /6) if int(max(distances) /6) > 22 else 22
     locations_new = []
@@ -208,7 +225,7 @@ def getLines(newImage):
         if mid_distances[idx] >= min_height:
             locations_final.append(locations_new[idx])
 
-    #obtaining the locations of the inbetween sections
+    # obtaining the locations of the inbetween sections
     mid_lines = []
     top_line = [locations_final[0][0] - int(avg_lh*2.5) ,locations_final[0][0] - int(avg_lh)]
     mid_lines.append(top_line)
@@ -218,16 +235,13 @@ def getLines(newImage):
                 end = locations_final[sec + 1][0]  # top line of peak_n+1
                 mid_lines.append([beginning, end])
 
+    # Obtain bottom line
     mid2 = []
     for sec in mid_lines:
         if sec[0] < sec[1]:
             mid2.append(sec)
-
-    
     bottom_line = [locations_final[-1][1] + int(avg_lh), locations_final[-1][1]+ int(avg_lh*2)]
     mid2.append(bottom_line)
-
-    
 
     return mid2, top_line, bottom_line, line_heights, hist, thr_num
 
@@ -253,13 +267,6 @@ def get_binary(img):
     binary = img <= thresh
     binary = binary * 1
     return binary
-
-# def getMidSections(mid_lines, image):
-#     """ Mid section between 2 lines that contain characters """
-#     sections = []
-#     for sec in mid_lines:
-#         sections.append(image[sec[0]:sec[1], :])
-#     return sections
 # ------------------------- Histogram part -------------------------
 
 # ------------------------- A* algorithm part ----------------------
@@ -430,33 +437,36 @@ def load_path(file_name):
 
 # ------------------------- Obtain paths ----------------------
 
-image_num = 10
-img_path = f'data/image-data/binaryRenamed/{image_num}.jpg'
-new_folder_path = f"data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
-image = rotateImage(img_path)
-binary_image = get_binary(image)
+for i in range(1, 21):
+    image_num = i
+    img_path = f'data/image-data/binaryRenamed/{image_num}.jpg'
+    new_folder_path = f"data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
+    print(img_path)
+    image = rotateImage(img_path)
+    binary_image = get_binary(image)
 
+    if not os.path.exists(new_folder_path):
+        # run image-processing
+        mid_lines, top_line, bottom_line, line_height, hist, thr_num = getLines(image)
+        plotHist(hist, thr_num, save=True, folder_path=new_folder_path)
+        plotHistLinesOnImage(binary_image, mid_lines, save=True, folder_path=new_folder_path)
 
-if not os.path.exists(new_folder_path):
-    # run image-processing
-    mid_lines, top_line, bottom_line, line_height, hist, thr_num = getLines(image)
-    plotHist(hist, thr_num)
-    plotHistLinesOnImage(binary_image, mid_lines)
-    paths = find_paths(mid_lines, binary_image)
+        paths = find_paths(mid_lines, binary_image)
+        plotPathsNextToImage(binary_image, paths, save=True, folder_path=new_folder_path)
 
-    # # save paths
-    os.makedirs(new_folder_path)
-    for idx, path in enumerate(paths):
-        save_path(path, f"{new_folder_path}/path_{idx}.csv")
-else:
-    # load paths
-    file_paths_list = sorted(glob.glob(f'{new_folder_path}/*.csv'), key=get_key)
-    paths = [] # a* paths
-    sections_loaded = []
-    for file_path in file_paths_list:
-        line_path = load_path(file_path)
-        paths.append(line_path)
-        #binary_image[]
+        # # save paths
+        os.makedirs(new_folder_path)
+        for idx, path in enumerate(paths):
+            save_path(path, f"{new_folder_path}/path_{idx}.csv")
+    else:
+        # load paths
+        file_paths_list = sorted(glob.glob(f'{new_folder_path}/*.csv'), key=get_key)
+        paths = [] # a* paths
+        sections_loaded = []
+        for file_path in file_paths_list:
+            line_path = load_path(file_path)
+            paths.append(line_path)
+        plotPathsNextToImage(binary_image, paths, save=True, folder_path=new_folder_path, overwrite_path=True)
         
 
 # extract sections from binary image determined by path
@@ -519,12 +529,12 @@ for idx in range(len(vertical_projection)):
         whitespace_lengths.append(whitespace)
 
 
-print("whitespaces:", whitespace_lengths)
+# print("whitespaces:", whitespace_lengths)
 avg_white_space_length = np.mean(whitespace_lengths)
-print("average whitespace lenght:", avg_white_space_length)
+# print("average whitespace lenght:", avg_white_space_length)
 
 num_of_spaces = [x for x in whitespace_lengths if x > avg_white_space_length]
-print(num_of_spaces)
+# print(num_of_spaces)
 ## find index of whitespaces which are actually long spaces using the avg_white_space_length
 whitespace_length = 0
 divider_indexes = []
@@ -539,7 +549,7 @@ for index, vp in enumerate(vertical_projection):
             divider_indexes.append(index-int(whitespace_length/2))
             whitespace_length = 0 # reset it
     
-print(divider_indexes)
+# print(divider_indexes)
 
 # lets create the block of words from divider_indexes
 divider_indexes = np.array(divider_indexes)
@@ -552,11 +562,10 @@ for index, window in enumerate(dividers):
     ax[index].imshow(first_line[:,window[0]:window[1]], cmap="gray")
    
 plt.show()
-#plotPathsNextToImage(binary_image, paths)
+# plotPathsNextToImage(binary_image, paths)
 
-#plotPathsNextToImage(binary_image, paths)
 # - get min y of upper path  and max Y of lower path coordinates
 # - create a numpy array with max-min height and width = path_width
 #     - loop through the rows of the new array
 #         - fill in the new array with zeros everywhere, except at the indices where the loaded section has values
-
+print("Program has executed successfully.")
