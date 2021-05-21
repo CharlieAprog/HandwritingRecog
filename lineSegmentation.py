@@ -59,6 +59,39 @@ def plotPathsNextToImage(binary_image, line_segments):
     ax[1].imshow(binary_image, cmap="gray")
     ax[0].imshow(binary_image, cmap="gray")
     plt.show()
+
+
+def plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage):
+    fig, axes = plt.subplots(1, 4, figsize=(15, 6))
+    ax = axes.ravel()
+
+    # Axis 0
+    ax[0].imshow(image, cmap='gray')
+    ax[0].set_title('Input image')
+    ax[0].set_axis_off()
+
+    # Axis 1
+    ax[1].imshow(np.log(1 + hspace),
+                 extent=[np.rad2deg(theta[-1]), np.rad2deg(theta[0]), dist[-1], dist[0]],
+                 cmap='gray', aspect=1/1.5)
+    ax[1].set_title('Hough transform')
+    ax[1].set_xlabel('Angles (degrees)')
+    ax[1].set_ylabel('Distance (pixels)')
+    ax[1].axis('image')
+
+    # Axis 2
+    ax[2].imshow(image, cmap='gray')
+    ax[2].plot(origin, (x0, x1), '-b')
+    ax[2].set_xlim(origin)
+    ax[2].set_ylim((image.shape[0], 0))
+    ax[2].set_axis_off()
+    ax[2].set_title('Detected lines')
+
+    # Axis 3
+    ax[3].imshow(newImage, cmap='gray')
+
+    plt.tight_layout()
+    plt.show()
 # ------------------------- Plotting functions -------------------------
 
 # ------------------------- Hough Transform -------------------------
@@ -68,54 +101,27 @@ def rotateImage(img_path):
     # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
     tested_angles = np.linspace(-np.pi * 40 / 100, -np.pi * 50 / 100, 100)
     hspace, theta, dist, = hough_line(image, tested_angles)
-
     h, q, d = hough_line_peaks(hspace, theta, dist)
 
-    #################################################################
-    # Example code from skimage documentation to plot the detected lines
     angle_list = []  # Create an empty list to capture all angles
     dist_list = []
-    # Generating figure 1
-    # fig, axes = plt.subplots(1, 4, figsize=(15, 6))
-    # ax = axes.ravel()
-    # ax[0].imshow(image, cmap='gray')
-    # ax[0].set_title('Input image')
-    # ax[0].set_axis_off()
-    # ax[1].imshow(np.log(1 + hspace),
-    #              extent=[np.rad2deg(theta[-1]), np.rad2deg(theta[0]), dist[-1], dist[0]],
-    #              cmap='gray', aspect=1/1.5)
-    # ax[1].set_title('Hough transform')
-    # ax[1].set_xlabel('Angles (degrees)')
-    # ax[1].set_ylabel('Distance (pixels)')
-    # ax[1].axis('image')
-    # ax[2].imshow(image, cmap='gray')
     origin = np.array((0, image.shape[1]))
-
     for _, angle, dist in zip(*hough_line_peaks(hspace, theta, dist, min_distance=50, threshold=0.76 * np.max(hspace))):
         angle_list.append(angle)  # Not for plotting but later calculation of angles
         dist_list.append(dist)
         y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
         # ax[2].plot(origin, (y0, y1), '-r')
-
     ave_angle = np.mean(angle_list)
-    ave = ave_angle * 180 / np.pi
     ave_dist = np.mean(dist_list)
     x0, x1 = (ave_dist - origin * np.cos(ave_angle)) / np.sin(ave_angle)
 
-    # ax[2].plot(origin, (x0, x1), '-b')
-    # ax[2].set_xlim(origin)
-    # ax[2].set_ylim((image.shape[0], 0))
-    # ax[2].set_axis_off()
-    # ax[2].set_title('Detected lines')
-
-    ###############################################################
     # Convert angles from radians to degrees (1 rad = 180/pi degrees)
     angles = [a * 180 / np.pi for a in angle_list]
     change = 90 - -1 * np.mean(angles)
     newImage = cv2.bitwise_not(imutils.rotate_bound(image, -change))
-    # ax[3].imshow(newImage, cmap='gray')
-    # plt.tight_layout()
-    # plt.show()
+
+    # plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage)
+
     # Compute difference between the two lines
     angle_difference = np.max(angles) - np.min(angles)
 
@@ -153,13 +159,6 @@ def getLines(newImage):
              "value": max(p[1]),
              "lh": p[0] + len(p[1]) - p[0]}
         )
-
-    # Filtering line height outliers
-    # min_height = calc_outlier(line_heights)
-    # thr_peaks_filtered = []
-    # for i in range(len(thr_peaks)):
-    #     if thr_peaks[i]["lh"] > min_height:
-    #         thr_peaks_filtered.append(thr_peaks[i])
 
     #combining lines that are too close together
     locations = [x['loc'] for x in thr_peaks]
