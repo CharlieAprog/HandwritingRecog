@@ -10,7 +10,6 @@ import numpy as np
 import csv
 import os
 import glob
-import copy
 import PIL
 from PIL import Image
 import PIL.ImageOps
@@ -21,8 +20,6 @@ from matplotlib import cm
 from matplotlib import pyplot as plt
 import pprint
 from heapq import *
-
-from typing import
 
 
 # ------------------------- Plotting functions -------------------------
