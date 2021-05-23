@@ -426,9 +426,7 @@ def group_the_road_blocks(road_blocks):
            index == size-1 and len(road_blocks_cluster) > 0:
             road_blocks_cluster_groups.append([road_blocks_cluster[0], road_blocks_cluster[-1]])
             road_blocks_cluster = []
-
     return road_blocks_cluster_groups
-
 
 @timer
 def find_paths(hpp_clusters, binary_image, avg_lh):
@@ -445,7 +443,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
         # check for fake roadblocks
         if len(road_blocks) != 0:
             nmap_rb = binary_image[cluster_of_interest[0] -
-                                int(upward_push):cluster_of_interest[-1]]
+                                upward_push:cluster_of_interest[-1]]
             road_blocks_new = get_road_block_regions(nmap_rb)
             if road_blocks_new != road_blocks and len(road_blocks_new) < len(road_blocks):
                 print('Fake roadblock has been hit, better path found')
@@ -494,10 +492,9 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
     paths = []
     for i, cluster_of_interest in tqdm(enumerate(hpp_clusters)):
         if i in fake_rb_indices:
-            nmap = binary_image[cluster_of_interest[0] -
-                                int(upward_push):cluster_of_interest[-1]]
-            offset_from_top = cluster_of_interest[0]-int(upward_push)
-            height = agent_height[i] + int(upward_push)
+            nmap = binary_image[cluster_of_interest[0]-upward_push:cluster_of_interest[-1]]
+            offset_from_top = cluster_of_interest[0]-upward_push
+            height = agent_height[i] + upward_push
         else:
             nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[-1]]
             offset_from_top = cluster_of_interest[0]
@@ -708,6 +705,7 @@ for i in range(1, 21):
 #         ax[index].imshow(first_line[:, window[0]:window[1]], cmap="gray")
 #
 #     plt.show()
+
 #plotPathsNextToImage(binary_image, paths)
 
 #plotPathsNextToImage(binary_image, paths)
