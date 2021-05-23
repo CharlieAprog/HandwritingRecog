@@ -61,10 +61,12 @@ def plotPathsNextToImage(binary_image, line_segments):
     plt.show()
 # ------------------------- Plotting functions -------------------------
 
-# ------------------------- Hough Transform -------------------------
-def rotateImage(img_path):
+def getImage(img_path):
     image = cv2.imread(img_path, 0)
     image = cv2.bitwise_not(image)
+    return image
+# ------------------------- Hough Transform -------------------------
+def rotateImage(image):
     # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
     tested_angles = np.linspace(-np.pi * 40 / 100, -np.pi * 50 / 100, 100)
     hspace, theta, dist, = hough_line(image, tested_angles)
@@ -429,14 +431,112 @@ def load_path(file_name):
     """ Loads a csv formatted path file into a numpy array. """
     return np.loadtxt(file_name, delimiter=',', dtype=int)
 
-# ------------------------- Obtain paths ----------------------
+def extract_line_from_image(image, lower_line, upper_line):
+    lower_boundary = np.min(lower_line[:, 0])
+    upper_boundary = np.min(upper_line[:, 0])
+    img_copy = np.copy(image)
+    r, c = img_copy.shape
+    for index in range(c-1):
+        img_copy[0:lower_line[index, 0], index] = 0
+        img_copy[upper_line[index, 0]:r, index] = 0
+    
+    return img_copy[lower_boundary:upper_boundary, :]
 
-image_num = 10
+def trim_line(line):
+    thresh = threshold_otsu(line)
+    binary = line > thresh
+    vertical_projection = np.sum(binary, axis=0)
+    b1 = 0 
+    b2 = 0
+    beginning = 0
+    end = 0
+    temp1 = 0 
+    temp2 = 0
+
+    for idx in range(len(vertical_projection)):
+        if beginning == 0:
+            if vertical_projection[idx] == 0: # white
+                if b1 > 10:
+                    beginning = temp1
+                else: 
+                    temp1 = 0
+                    b1 = 0
+            elif vertical_projection[idx] != 0: #black
+                if b1 == 0: #start of black
+                    temp1 = idx - 5
+                b1 += 1
+        
+        if end == 0:
+            idx2 = len(vertical_projection) - (idx + 1)
+            if vertical_projection[idx2] == 0: # white
+
+                if b2 > 10:
+                    end = temp2 + 5
+                else: 
+                    temp2 = 0
+                    b2 = 0
+            elif vertical_projection[idx2] != 0: #black
+                if b2 == 0: #start of black
+                    temp2 = idx2
+                b2 += 1
+        if end != 0 and beginning != 0:
+            break
+
+    new_line = binary[:,beginning:end]
+    return new_line
+
+def segment_words(line, vertical_projection):
+    whitespace_lengths = []
+    whitespace = 0
+
+    for idx in range(5,len(vertical_projection)-4):
+        if vertical_projection[idx] == 0:
+            whitespace = whitespace + 1
+        elif vertical_projection[idx] != 0:
+            if whitespace != 0:
+                whitespace_lengths.append(whitespace) 
+            whitespace = 0 # reset whitepsace counter. 
+        if idx == len(vertical_projection)-1:
+            whitespace_lengths.append(whitespace)
+
+
+    print("whitespaces:", whitespace_lengths)
+    avg_white_space_length = np.mean(whitespace_lengths)
+    print("average whitespace lenght:", avg_white_space_length)
+
+    ## find index of whitespaces which are actually long spaces using the avg_white_space_length
+    whitespace_length = 0
+    divider_indexes = []
+    divider_indexes.append(0)
+    for index, vp in enumerate(vertical_projection[4:len(vertical_projection) - 5]):
+        if vp == 0: #white
+            whitespace_length += 1
+        elif vp != 0: #black
+            if whitespace_length != 0 and whitespace_length > avg_white_space_length:
+                divider_indexes.append(index-int(whitespace_length/2))
+            whitespace_length = 0 # reset it
+    divider_indexes.append(len(vertical_projection) -1)
+    divider_indexes = np.array(divider_indexes)
+    dividers = np.column_stack((divider_indexes[:-1],divider_indexes[1:]))
+
+    word_sizes = [np.sum(np.sum(line[:,window[0]:window[1]], axis=1)) for window in dividers]
+    print(word_sizes)
+        
+    new_dividers = [window for window in dividers if np.sum(np.sum(line[:,window[0]:window[1]], axis=0)) > 200]
+
+        
+    return new_dividers
+
+# ------------------------- Load Image----------------------
+
+image_num = 14
 img_path = f'data/image-data/binaryRenamed/{image_num}.jpg'
 new_folder_path = f"data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
-image = rotateImage(img_path)
+image = getImage(img_path)
+image = rotateImage(image)
 binary_image = get_binary(image)
 
+# ------------------------- Obtain line segments ----------------------
 
 if not os.path.exists(new_folder_path):
     # run image-processing
@@ -460,20 +560,10 @@ else:
         #binary_image[]
         
 
+#plotPathsNextToImage(binary_image, paths)
+
 # extract sections from binary image determined by path
 line_images = []
-def extract_line_from_image(image, lower_line, upper_line):
-    lower_boundary = np.min(lower_line[:, 0])
-    upper_boundary = np.min(upper_line[:, 0])
-    img_copy = np.copy(image)
-    r, c = img_copy.shape
-    for index in range(c-1):
-        img_copy[0:lower_line[index, 0], index] = 0
-        img_copy[upper_line[index, 0]:r, index] = 0
-    
-    return img_copy[lower_boundary:upper_boundary, :]
-
-#plot sections
 line_count = len(paths)
 # fig, ax = plt.subplots(figsize=(10,10), nrows=line_count-1)
 for line_index in range(line_count-1):
@@ -484,75 +574,32 @@ for line_index in range(line_count-1):
 # plt.show()
 
 
-from skimage.filters import threshold_otsu
 
 #binarize the image, guassian blur will remove any noise in the image
-first_line = line_images[1]
-thresh = threshold_otsu(first_line)
-binary = first_line > thresh
+for line in range(len(line_images)):
+    line_num = line
+    first_line = trim_line(line_images[line_num])
+    vertical_projection = np.sum(first_line, axis=0)
 
-# find the vertical projection by adding up the values of all pixels along rows
-vertical_projection = np.sum(binary, axis=0)
+    # plot the vertical projects
+    fig, ax = plt.subplots(nrows=2, figsize=(10,5))
+    plt.xlim(0, first_line.shape[1])
+    ax[0].imshow(first_line, cmap="gray")
+    ax[1].plot(vertical_projection)
+    plt.show()
 
-# plot the vertical projects
-fig, ax = plt.subplots(nrows=2, figsize=(20,10))
-plt.xlim(0, first_line.shape[1])
-ax[0].imshow(binary, cmap="gray")
-ax[1].plot(vertical_projection)
-plt.show()
+    ## we will go through the vertical projections and 
+    ## find the sequence of consecutive white spaces in the image
 
-height = first_line.shape[0]
+    dividers = segment_words(first_line, vertical_projection)
 
-## we will go through the vertical projections and 
-## find the sequence of consecutive white spaces in the image
-whitespace_lengths = []
-whitespace = 0
-
-for idx in range(len(vertical_projection)):
-    if vertical_projection[idx] == 0:
-        whitespace = whitespace + 1
-    elif vertical_projection[idx] != 0:
-        if whitespace != 0:
-            whitespace_lengths.append(whitespace) 
-        whitespace = 0 # reset whitepsace counter. 
-    if idx == len(vertical_projection)-1:
-        print('yee')
-        whitespace_lengths.append(whitespace)
-
-
-print("whitespaces:", whitespace_lengths)
-avg_white_space_length = np.mean(whitespace_lengths)
-print("average whitespace lenght:", avg_white_space_length)
-
-num_of_spaces = [x for x in whitespace_lengths if x > avg_white_space_length]
-print(num_of_spaces)
-## find index of whitespaces which are actually long spaces using the avg_white_space_length
-whitespace_length = 0
-divider_indexes = []
-
-for index, vp in enumerate(vertical_projection):
-    if vp == 0:
-        whitespace_length = whitespace_length + 1
-        if len(divider_indexes) == len(num_of_spaces) - 1  and whitespace_length > avg_white_space_length:
-            divider_indexes.append(index+int(whitespace_length/2))
-    elif vp != 0:
-        if whitespace_length != 0 and whitespace_length > avg_white_space_length:
-            divider_indexes.append(index-int(whitespace_length/2))
-            whitespace_length = 0 # reset it
+    # now plot the findings
+    fig, ax = plt.subplots(nrows=len(dividers), figsize=(5,6))
+    for index, window in enumerate(dividers):
+        ax[index].axis("off")
+        ax[index].imshow(first_line[:,window[0]:window[1]], cmap="gray")
     
-print(divider_indexes)
-
-# lets create the block of words from divider_indexes
-divider_indexes = np.array(divider_indexes)
-dividers = np.column_stack((divider_indexes[:-1],divider_indexes[1:]))
-
-# now plot the findings
-fig, ax = plt.subplots(nrows=len(dividers), figsize=(5,6))
-for index, window in enumerate(dividers):
-    ax[index].axis("off")
-    ax[index].imshow(first_line[:,window[0]:window[1]], cmap="gray")
-   
-plt.show()
+    plt.show()
 #plotPathsNextToImage(binary_image, paths)
 
 #plotPathsNextToImage(binary_image, paths)
