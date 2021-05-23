@@ -10,6 +10,7 @@ import numpy as np
 import csv
 import os
 import glob
+import copy
 import PIL
 from PIL import Image
 import PIL.ImageOps
@@ -21,24 +22,34 @@ from matplotlib import pyplot as plt
 import pprint
 from heapq import *
 
+from typing import
+
 
 # ------------------------- Plotting functions -------------------------
 def handle_saving(plotting_function):
     def wrapper_function(*args, **kwargs):
         plotting_function(*args, **kwargs)
-        save, folder_path, overwrite_path = [x for x in kwargs.values()]
-        if not save:
+
+        # save_args: save, folder_path, overwrite_path
+        save_args = [x for x in kwargs.values()]
+
+        if not save_args[0]:
             plt.show()
         else:
-            img_path = f"{folder_path}{os.path.sep}{plotting_function.__name__}_img{image_num}.png"
-            if not os.path.exists(f"{folder_path}{os.path.sep}{plotting_function.__name__}_img{image_num}.png"):
-                plt.savefig(img_path)
-                print(f"Image {os.path.basename(img_path)} has been saved. Overwriting=0.")
-            elif overwrite_path:
-                plt.savefig(img_path)
-                print(f"Image {os.path.basename(img_path)} has been saved. Overwriting=1.")
+            if len(save_args) == 3:
+                img_path = f"{save_args[1]}{os.path.sep}{plotting_function.__name__}_img{image_num}.png"
+                if not os.path.exists(f"{save_args[1]}{os.path.sep}{plotting_function.__name__}_img{image_num}.png"):
+                    plt.savefig(img_path)
+                    print(f"Image {os.path.basename(img_path)} has been saved. Overwriting=0.")
+                elif save_args[2]:
+                    plt.savefig(img_path)
+                    print(f"Image {os.path.basename(img_path)} has been saved. Overwriting=1.")
+                else:
+                    print(f"Image path already exists: [{img_path}]")
             else:
-                print(f"Image path already exists: [{img_path}]")
+                # No other cases are needed to be taken into account, as 'save' and 'folder_path' are trivial to be
+                # provided when one wishes to save an image, overwrite is the only thing that may easily be forgotten
+                raise IndexError(f"Expected number of arguments: 3 (save, folder_path, overwrite) but received only 2")
     return wrapper_function
 
 
@@ -70,10 +81,11 @@ def plotHistLinesOnImage(newImage, midlines, save=False, folder_path=None, overw
 
 
 @handle_saving
-def plotPathsNextToImage(binary_image, line_segments, save=False, folder_path=None, overwrite_path=False):
+def plotPathsNextToImage(binary_image, paths, save=False, folder_path=None, overwrite_path=False):
     fig, ax = plt.subplots(figsize=(16, 12), ncols=2)
-    for path in line_segments:
-        ax[1].plot((path[:,1]), path[:,0])
+    for path in paths:
+        path = np.array(path)
+        ax[1].plot((path[:, 1]), path[:, 0])
     ax[1].axis("off")
     ax[0].axis("off")
     ax[1].imshow(binary_image, cmap="gray")
@@ -208,26 +220,28 @@ def getLines(newImage):
 
     # Adding buffer, based on average height of the NEW (!) lines, to each line that is too small
     line_heights_new = [x[1]-x[0] for x in locations_new]
-    avg_lh = np.mean(line_heights_new)
+    avg_lh_new = np.mean(line_heights_new)
     for idx, loc in enumerate(locations_new):
-        if line_heights_new[idx] < avg_lh:
+        if line_heights_new[idx] < avg_lh_new:
             for i in range(len(loc)):
                 if idx == 0:
-                    locations_new[idx][i] -= int(avg_lh / 5 ) # top lines are pushed up
+                    locations_new[idx][i] -= int(avg_lh_new / 5 ) # top lines are pushed up
                 else:
-                    locations_new[idx][i] += int(avg_lh / 6)  # bottom lines are pushed down
+                    locations_new[idx][i] += int(avg_lh_new / 6)  # bottom lines are pushed down
 
-    #remove sections that are left over than have a low hight
+    # remove sections that are left over than have a low hight
     locations_final = []
     mid_distances = [line[1] - line[0] for line in locations_new]
     min_height = int(calc_outlier(mid_distances) /3) + 2
     for idx in range(len(mid_distances)):
         if mid_distances[idx] >= min_height:
             locations_final.append(locations_new[idx])
+    line_heights_final = [x[1]-x[0] for x in locations_final]
+    avg_lh_final = np.mean(line_heights_final)
 
     # obtaining the locations of the inbetween sections
     mid_lines = []
-    top_line = [locations_final[0][0] - int(avg_lh*2.5) ,locations_final[0][0] - int(avg_lh)]
+    top_line = [locations_final[0][0] - int(avg_lh_final*2.5) ,locations_final[0][0] - int(avg_lh_final)]
     mid_lines.append(top_line)
     for sec in range(len(locations_final) - 1):
         if locations_final[sec][first] < locations_final[sec][second]:
@@ -240,10 +254,10 @@ def getLines(newImage):
     for sec in mid_lines:
         if sec[0] < sec[1]:
             mid2.append(sec)
-    bottom_line = [locations_final[-1][1] + int(avg_lh), locations_final[-1][1]+ int(avg_lh*2)]
+    bottom_line = [locations_final[-1][1] + int(avg_lh_final), locations_final[-1][1]+ int(avg_lh_final*2)]
     mid2.append(bottom_line)
 
-    return mid2, top_line, bottom_line, line_heights, hist, thr_num
+    return mid2, top_line, bottom_line, avg_lh_final, hist, thr_num,
 
 
 def calc_outlier(data, method="std"):
@@ -372,50 +386,51 @@ def group_the_road_blocks(road_blocks):
             road_blocks_cluster_groups.append([road_blocks_cluster[0], road_blocks_cluster[len(road_blocks_cluster)-1]])
             road_blocks_cluster = []
 
+        # last cluster's case
         if index == size-1 and len(road_blocks_cluster) > 0: 
             road_blocks_cluster_groups.append([road_blocks_cluster[0], road_blocks_cluster[len(road_blocks_cluster)-1]])
             road_blocks_cluster = []
 
     return road_blocks_cluster_groups
 
-def find_paths(hpp_clusters, binary_image):
-    count = 0
-    for cluster_of_interest in hpp_clusters:
-        print(count)
-        count += 1
-        nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
+def find_paths(hpp_clusters, binary_image, avg_lh):
+    fake_rb_indices = []
+    for idx, cluster_of_interest in enumerate(hpp_clusters):
+        print(idx)
+        nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[-1]]
         road_blocks = get_road_block_regions(nmap)
+
+        # check for fake roadblocks
+        if len(road_blocks) != 0:
+            nmap = binary_image[cluster_of_interest[0]-int(avg_lh/2):cluster_of_interest[-1]]
+            road_blocks_new = get_road_block_regions(nmap)
+            if road_blocks_new != road_blocks:
+                fake_rb_indices.append(idx)
+                road_blocks = road_blocks_new
         road_blocks_cluster_groups = group_the_road_blocks(road_blocks)
-        #create the doorways
+
+        # create the doorways for real roadblocks
         for index, road_blocks in enumerate(road_blocks_cluster_groups):
             window_image = nmap[:, road_blocks[0]: road_blocks[1]+40]
-            binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+40 - 1][int(window_image.shape[0]/4),:] *= 0
-            # if count == 6 or count == 6:
-            #     fig, axes = plt.subplots(1, 4, figsize=(10, 6))
-            #     ax = axes.ravel()
-            #     ax[1].imshow(invert(binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:][:, road_blocks[0]: road_blocks[1]+40]), cmap="gray")
-            #     plt.show()
-    
+            binary_image[cluster_of_interest[0]:cluster_of_interest[-1], :][:, road_blocks[0]: road_blocks[1]+40 - 1][int(window_image.shape[0]/4),:] *= 0
 
     paths = []
     for i, cluster_of_interest in tqdm(enumerate(hpp_clusters)):
-        nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[len(cluster_of_interest)-1],:]
+        if i in fake_rb_indices:
+            nmap = binary_image[cluster_of_interest[0]-int(avg_lh/2):cluster_of_interest[-1]]
+            offset_from_top = cluster_of_interest[0]-int(avg_lh/2)
+        else:
+            nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[-1]]
+            offset_from_top = cluster_of_interest[0]
         path = np.array(astar(nmap, (int(nmap.shape[0]/2), 0), (int(nmap.shape[0]/2),nmap.shape[1]-1),i))
-        offset_from_top = cluster_of_interest[0]
-        print(path.shape)
+        print("path.shape:", path.shape)
+        # assert path.shape[0] != 0, "Path has shape (0,), algorithm failed to reach destination."
         if path.shape[0] == 0:
             print('jeez')
-            continue 
-        path[:,0] += offset_from_top
+            continue
+        path[:, 0] += offset_from_top
         path = [list(step) for step in path]
         paths.append(path)
-
-    # TODO: Replace this with the top/bottom line that we already have from getLine()
-    # add an extra line to the line segments array which represents the last bottom row on the image
-    # last_bottom_row = np.flip(np.column_stack(
-        # ((np.ones((binary_image.shape[1],)) * binary_image.shape[0]), np.arange(binary_image.shape[1]))).astype(int),
-                            #   axis=0)
-    # paths.append(last_bottom_row)
     return paths
 
 
@@ -437,135 +452,137 @@ def load_path(file_name):
 
 # ------------------------- Obtain paths ----------------------
 
-for i in range(1, 21):
-    image_num = i
-    img_path = f'data/image-data/binaryRenamed/{image_num}.jpg'
-    new_folder_path = f"data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
-    print(img_path)
-    image = rotateImage(img_path)
-    binary_image = get_binary(image)
+image_num = 4
+img_path = f'data/image-data/binaryRenamed/{image_num}.jpg'
+new_folder_path = f"data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
+print(img_path)
+image = rotateImage(img_path)
+binary_image = get_binary(image)
 
-    if not os.path.exists(new_folder_path):
-        # run image-processing
-        mid_lines, top_line, bottom_line, line_height, hist, thr_num = getLines(image)
-        plotHist(hist, thr_num, save=True, folder_path=new_folder_path)
-        plotHistLinesOnImage(binary_image, mid_lines, save=True, folder_path=new_folder_path)
+if os.path.exists(new_folder_path):
+    # run image-processing
+    mid_lines, top_line, bottom_line, avg_lh, hist, thr_num = getLines(image)
+    plotHist(hist, thr_num,
+             save=True, folder_path=new_folder_path, overwrite_path=False)
+    plotHistLinesOnImage(binary_image, mid_lines,
+                         save=True, folder_path=new_folder_path, overwrite_path=False)
 
-        paths = find_paths(mid_lines, binary_image)
-        plotPathsNextToImage(binary_image, paths, save=True, folder_path=new_folder_path)
+    paths = find_paths(mid_lines, binary_image, avg_lh)
+    plotPathsNextToImage(binary_image, paths,
+                         save=True, folder_path=new_folder_path, overwrite_path=False)
 
-        # # save paths
-        os.makedirs(new_folder_path)
-        for idx, path in enumerate(paths):
-            save_path(path, f"{new_folder_path}/path_{idx}.csv")
-    else:
-        # load paths
-        file_paths_list = sorted(glob.glob(f'{new_folder_path}/*.csv'), key=get_key)
-        paths = [] # a* paths
-        sections_loaded = []
-        for file_path in file_paths_list:
-            line_path = load_path(file_path)
-            paths.append(line_path)
-        plotPathsNextToImage(binary_image, paths, save=True, folder_path=new_folder_path, overwrite_path=True)
+    # # save paths
+    os.makedirs(new_folder_path)
+    for idx, path in enumerate(paths):
+        save_path(path, f"{new_folder_path}/path_{idx}.csv")
+else:
+    # load paths
+    file_paths_list = sorted(glob.glob(f'{new_folder_path}/*.csv'), key=get_key)
+    paths = []  # a* paths
+    sections_loaded = []
+    for file_path in file_paths_list:
+        line_path = load_path(file_path)
+        paths.append(line_path)
+    plotPathsNextToImage(binary_image, paths, save=False)
         
-
-# extract sections from binary image determined by path
-line_images = []
-def extract_line_from_image(image, lower_line, upper_line):
-    lower_boundary = np.min(lower_line[:, 0])
-    upper_boundary = np.min(upper_line[:, 0])
-    img_copy = np.copy(image)
-    r, c = img_copy.shape
-    for index in range(c-1):
-        img_copy[0:lower_line[index, 0], index] = 0
-        img_copy[upper_line[index, 0]:r, index] = 0
-    
-    return img_copy[lower_boundary:upper_boundary, :]
-
-#plot sections
-line_count = len(paths)
-# fig, ax = plt.subplots(figsize=(10,10), nrows=line_count-1)
-for line_index in range(line_count-1):
-    line_image = extract_line_from_image(binary_image, paths[line_index], paths[line_index+1])
-    line_images.append(line_image)
-#     ax[line_index].imshow(invert(line_image), cmap="gray")
-
+#
+# # extract sections from binary image determined by path
+# line_images = []
+# def extract_line_from_image(image, lower_line, upper_line):
+#     lower_boundary = np.min(lower_line[:, 0])
+#     upper_boundary = np.min(upper_line[:, 0])
+#     img_copy = np.copy(image)
+#     r, c = img_copy.shape
+#     for index in range(c-1):
+#         img_copy[0:lower_line[index, 0], index] = 0
+#         img_copy[upper_line[index, 0]:r, index] = 0
+#
+#     return img_copy[lower_boundary:upper_boundary, :]
+#
+# #plot sections
+# line_count = len(paths)
+# # fig, ax = plt.subplots(figsize=(10,10), nrows=line_count-1)
+# for line_index in range(line_count-1):
+#     line_image = extract_line_from_image(binary_image, paths[line_index], paths[line_index+1])
+#     line_images.append(line_image)
+# #     ax[line_index].imshow(invert(line_image), cmap="gray")
+#
+# # plt.show()
+#
+#
+# from skimage.filters import threshold_otsu
+#
+# #binarize the image, guassian blur will remove any noise in the image
+# first_line = line_images[1]
+# thresh = threshold_otsu(first_line)
+# binary = first_line > thresh
+#
+# # find the vertical projection by adding up the values of all pixels along rows
+# vertical_projection = np.sum(binary, axis=0)
+#
+# # plot the vertical projects
+# fig, ax = plt.subplots(nrows=2, figsize=(20,10))
+# plt.xlim(0, first_line.shape[1])
+# ax[0].imshow(binary, cmap="gray")
+# ax[1].plot(vertical_projection)
 # plt.show()
-
-
-from skimage.filters import threshold_otsu
-
-#binarize the image, guassian blur will remove any noise in the image
-first_line = line_images[1]
-thresh = threshold_otsu(first_line)
-binary = first_line > thresh
-
-# find the vertical projection by adding up the values of all pixels along rows
-vertical_projection = np.sum(binary, axis=0)
-
-# plot the vertical projects
-fig, ax = plt.subplots(nrows=2, figsize=(20,10))
-plt.xlim(0, first_line.shape[1])
-ax[0].imshow(binary, cmap="gray")
-ax[1].plot(vertical_projection)
-plt.show()
-
-height = first_line.shape[0]
-
-## we will go through the vertical projections and 
-## find the sequence of consecutive white spaces in the image
-whitespace_lengths = []
-whitespace = 0
-
-for idx in range(len(vertical_projection)):
-    if vertical_projection[idx] == 0:
-        whitespace = whitespace + 1
-    elif vertical_projection[idx] != 0:
-        if whitespace != 0:
-            whitespace_lengths.append(whitespace) 
-        whitespace = 0 # reset whitepsace counter. 
-    if idx == len(vertical_projection)-1:
-        print('yee')
-        whitespace_lengths.append(whitespace)
-
-
-# print("whitespaces:", whitespace_lengths)
-avg_white_space_length = np.mean(whitespace_lengths)
-# print("average whitespace lenght:", avg_white_space_length)
-
-num_of_spaces = [x for x in whitespace_lengths if x > avg_white_space_length]
-# print(num_of_spaces)
-## find index of whitespaces which are actually long spaces using the avg_white_space_length
-whitespace_length = 0
-divider_indexes = []
-
-for index, vp in enumerate(vertical_projection):
-    if vp == 0:
-        whitespace_length = whitespace_length + 1
-        if len(divider_indexes) == len(num_of_spaces) - 1  and whitespace_length > avg_white_space_length:
-            divider_indexes.append(index+int(whitespace_length/2))
-    elif vp != 0:
-        if whitespace_length != 0 and whitespace_length > avg_white_space_length:
-            divider_indexes.append(index-int(whitespace_length/2))
-            whitespace_length = 0 # reset it
-    
-# print(divider_indexes)
-
-# lets create the block of words from divider_indexes
-divider_indexes = np.array(divider_indexes)
-dividers = np.column_stack((divider_indexes[:-1],divider_indexes[1:]))
-
-# now plot the findings
-fig, ax = plt.subplots(nrows=len(dividers), figsize=(5,6))
-for index, window in enumerate(dividers):
-    ax[index].axis("off")
-    ax[index].imshow(first_line[:,window[0]:window[1]], cmap="gray")
-   
-plt.show()
-# plotPathsNextToImage(binary_image, paths)
-
-# - get min y of upper path  and max Y of lower path coordinates
-# - create a numpy array with max-min height and width = path_width
-#     - loop through the rows of the new array
-#         - fill in the new array with zeros everywhere, except at the indices where the loaded section has values
-print("Program has executed successfully.")
+#
+# height = first_line.shape[0]
+#
+# ## we will go through the vertical projections and
+# ## find the sequence of consecutive white spaces in the image
+# whitespace_lengths = []
+# whitespace = 0
+#
+# for idx in range(len(vertical_projection)):
+#     if vertical_projection[idx] == 0:
+#         whitespace = whitespace + 1
+#     elif vertical_projection[idx] != 0:
+#         if whitespace != 0:
+#             whitespace_lengths.append(whitespace)
+#         whitespace = 0 # reset whitepsace counter.
+#     if idx == len(vertical_projection)-1:
+#         print('yee')
+#         whitespace_lengths.append(whitespace)
+#
+#
+# # print("whitespaces:", whitespace_lengths)
+# avg_white_space_length = np.mean(whitespace_lengths)
+# # print("average whitespace lenght:", avg_white_space_length)
+#
+# num_of_spaces = [x for x in whitespace_lengths if x > avg_white_space_length]
+# # print(num_of_spaces)
+# ## find index of whitespaces which are actually long spaces using the avg_white_space_length
+# whitespace_length = 0
+# divider_indexes = []
+#
+# for index, vp in enumerate(vertical_projection):
+#     if vp == 0:
+#         whitespace_length = whitespace_length + 1
+#         if len(divider_indexes) == len(num_of_spaces) - 1  and whitespace_length > avg_white_space_length:
+#             divider_indexes.append(index+int(whitespace_length/2))
+#     elif vp != 0:
+#         if whitespace_length != 0 and whitespace_length > avg_white_space_length:
+#             divider_indexes.append(index-int(whitespace_length/2))
+#             whitespace_length = 0 # reset it
+#
+# # print(divider_indexes)
+#
+# # lets create the block of words from divider_indexes
+# divider_indexes = np.array(divider_indexes)
+# dividers = np.column_stack((divider_indexes[:-1],divider_indexes[1:]))
+#
+# # now plot the findings
+# fig, ax = plt.subplots(nrows=len(dividers), figsize=(5,6))
+# for index, window in enumerate(dividers):
+#     ax[index].axis("off")
+#     ax[index].imshow(first_line[:,window[0]:window[1]], cmap="gray")
+#
+# plt.show()
+# # plotPathsNextToImage(binary_image, paths)
+#
+# # - get min y of upper path  and max Y of lower path coordinates
+# # - create a numpy array with max-min height and width = path_width
+# #     - loop through the rows of the new array
+# #         - fill in the new array with zeros everywhere, except at the indices where the loaded section has values
+# print("Program has executed successfully.")
