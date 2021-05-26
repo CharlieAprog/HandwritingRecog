@@ -88,7 +88,7 @@ def imagemorph(img, amp, sigma, h, w):
 # then it first gets the distribution of classes and afterwards performs augmentation so that
 # all classes are relatively balanced (max instances per class = 2* min instances per class)
 # these new images are saved in a new folder that has to be created before
-def imagemorph_folder_balance(folder_path):
+def imagemorph_folder_balance(folder_path, double_current_data=False, even_data=False):
     image_names = glob.glob(folder_path)
     label_distribution = {}
     folders = image_names[0].split('/')
@@ -104,28 +104,44 @@ def imagemorph_folder_balance(folder_path):
             label_cnt = 0
         prev_label = label
     label_distribution[label] = label_cnt
-    max_label_cnt = max(label_distribution.values())
-    for label in label_distribution:
-        if label_distribution[label] < (max_label_cnt/2):
-            # how many times should we morph
-            morph_times = int((max_label_cnt/2) / label_distribution[label])
-            print(morph_times)
-            print(label_distribution[label])
-            #morph(folder_path, label, morph_times)
+    print(label_distribution)
+    cnt = 0
+    path = '/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/binarized_hdd_40x40'
+    if double_current_data:
+        amp = random.uniform(1.1, 1.6)
+        sigma = random.uniform(2.5, 4.0)
+        for img_name in image_names:
+            folders = img_name.split('/')
+            label = folders[8]
+            img = cv.imread(img_name)
+            h, w, _ = img.shape
+            res = imagemorph(img, amp, sigma, h, w)
+            out_name = label + '/' + 'double' + str(cnt) + '.png'
+            x = cv.imwrite(os.path.join(path, out_name), res)
+            cnt += 1
+    if even_data:
+        max_label_cnt = max(label_distribution.values())
+        for label in label_distribution:
+            if label_distribution[label] < (max_label_cnt/2):
+                # how many times should we morph
+                morph_times = int((max_label_cnt/2) / label_distribution[label])
+                #print('morphing', morph_times)
+                morph(folder_path, label, morph_times)
 
-def morph(folder_path, label_to_morph, morph_times):
+def morph(folder_path, label_to_morph, morph_times, new_folder=False):
     image_names = glob.glob(folder_path)
     cnt = 0
     # path to where the morphed images are saved, each char will get its own folder
-    path = '/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/bin_monk_40x40'
+    path = '/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/binarized_hdd_40x40'
     os.chdir(path)
     folders = image_names[0].split('/')
     prev_label = folders[8]
     for i in range(0, morph_times):
-        if i == 0:
+        if i == 0 and new_folder:
             only_one_directory = True
         else:
             only_one_directory = False
+        # use randomly choosen amp and sigma
         amp = random.uniform(1.1, 1.6)
         sigma = random.uniform(2.5, 4.0)
         for img_name in image_names:
@@ -144,4 +160,4 @@ def morph(folder_path, label_to_morph, morph_times):
 
 
 if __name__ == '__main__':
-    imagemorph_folder('/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/binarized_monkbrill_40x40/*/*.png')
+    imagemorph_folder_balance('/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/binarized_hdd_40x40/*/*.png', double_current_data=False)
