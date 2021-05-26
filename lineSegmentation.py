@@ -152,6 +152,18 @@ def plotSimpleImages(image_list):
     plt.show()
 
 
+def plotWordsInLine(line, words, vertical_projection):
+    fig, ax = plt.subplots(nrows=len(words) + 2, figsize=(5, 10))
+
+    plt.xlim(0, line.shape[1])
+    ax[0].imshow(line, cmap="gray")
+    ax[1].plot(vertical_projection)
+    for index, word in enumerate(words):
+        ax[index + 2].axis("off")
+        ax[index + 2].imshow(word, cmap="gray")
+    plt.show()
+
+
 # ------------------------- Plotting functions -------------------------
 
 
@@ -559,16 +571,16 @@ def extract_line_from_image(image, upper_line, lower_line):
     x_axis = 0
     y_axis = 1
     for step in upper_line:
-        img_copy[0:step[x_axis], step[y_axis]] *= 0
+        img_copy[0:step[x_axis], step[y_axis]] = 0
     for step in lower_line:
-        img_copy[step[x_axis]:r, step[y_axis]] *= 0
+        img_copy[step[x_axis]:r, step[y_axis]] = 0
     return img_copy[upper_boundary:lower_boundary, :]
 
 
 def trim_line(line):
     thresh = threshold_otsu(line)
-    binary = line > thresh
-    vertical_projection = np.sum(binary, axis=0)
+    line = line > thresh
+    vertical_projection = np.sum(line, axis=0)
     b1 = 0
     b2 = 0
     beginning = 0
@@ -579,33 +591,35 @@ def trim_line(line):
     for idx in range(len(vertical_projection)):
         if beginning == 0:
             if vertical_projection[idx] == 0:  # white
-                if b1 > 10:
-                    beginning = temp1
-                else:
+                if b1 <= 10:
                     temp1 = 0
                     b1 = 0
             elif vertical_projection[idx] != 0:  # black
                 if b1 == 0:  # start of black
-                    temp1 = idx - 5
+                    temp1 = idx - 5 if idx - 5 > 0 else idx
+                if b1 > 10:
+                    beginning = temp1
                 b1 += 1
 
         if end == 0:
             idx2 = len(vertical_projection) - (idx + 1)
             if vertical_projection[idx2] == 0:  # white
-
-                if b2 > 10:
-                    end = temp2 + 5
-                else:
+                if b2 <= 10:
                     temp2 = 0
                     b2 = 0
             elif vertical_projection[idx2] != 0:  # black
+
                 if b2 == 0:  # start of black
-                    temp2 = idx2
+                    temp2 = idx2 + 5 if idx + \
+                        5 < len(vertical_projection) else idx2
+                if b2 > 10:
+                    end = temp2
                 b2 += 1
+
         if end != 0 and beginning != 0:
             break
 
-    new_line = binary[:, beginning:end]
+    new_line = line[:, beginning:end]
     return new_line
 
 
@@ -707,31 +721,28 @@ for line_index in range(line_count-1):
 
 
 # binarize the image, guassian blur will remove any noise in the image
-for line in range(len(line_images)):
-    line_num = line
-    first_line = trim_line(line_images[line_num])
-    vertical_projection = np.sum(first_line, axis=0)
+words_in_lines = []
+for line_num in range(len(line_images)):
+    line = trim_line(line_images[line_num])
+    vertical_projection = np.sum(line, axis=0)
 
     # plot the vertical projects
     fig, ax = plt.subplots(nrows=2, figsize=(10, 5))
-    plt.xlim(0, first_line.shape[1])
-    ax[0].imshow(first_line, cmap="gray")
+    plt.xlim(0, line.shape[1])
+    ax[0].imshow(line, cmap="gray")
     ax[1].plot(vertical_projection)
     plt.show()
 
     # we will go through the vertical projections and
     # find the sequence of consecutive white spaces in the image
 
-    dividers = segment_words(first_line, vertical_projection)
+    dividers = segment_words(line, vertical_projection)
+    words = []
+    for window in dividers:
+        word = line[:, window[0]:window[1]]
+        trimmed_word = trim_line(
+            np.rot90(trim_line(np.rot90(word).astype(int)), axes=(1, 0)).astype(int))
+        words.append(trimmed_word)
 
-    # now plot the findings
-    fig, ax = plt.subplots(nrows=len(dividers), figsize=(5, 6))
-    for index, window in enumerate(dividers):
-        ax[index].axis("off")
-        ax[index].imshow(first_line[:, window[0]:window[1]], cmap="gray")
-
-    plt.show()
-
-plotPathsNextToImage(binary_image, paths)
-
-plotPathsNextToImage(binary_image, paths)
+    words_in_lines.append(words)
+    plotWordsInLine(line, words, vertical_projection)
