@@ -190,7 +190,6 @@ def grid_plot(images):
     for idx, ax in enumerate(axes):
         ax.plot(images[idx])
     plt.show()
-
 # ------------------------- Plotting functions -------------------------
 
 
@@ -518,6 +517,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
                                           :][:, road_blocks[0]-step_back:binary_image.shape[1]-1][0, 0]
                 step_back += 1
             assert prev_pixel == 0, "prev_pixel=1 at the start of annulling, horizontal cut cannot be performed"
+
             while True:
                 i += 1
                 if binary_image[cluster_of_interest[0]:cluster_of_interest[-1], :][:, road_blocks[0]:binary_image.shape[1]-1][0, i] == 0:
