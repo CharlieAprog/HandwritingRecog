@@ -26,6 +26,7 @@ from heapq import *
 
 def timer(original_func):
     import time
+
     def wrapper_function(*args, **kwargs):
         t1 = time.time()
         result = original_func(*args, **kwargs)
@@ -139,6 +140,57 @@ def plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage, save=False
     ax[3].imshow(newImage, cmap='gray')
 
     plt.tight_layout()
+
+
+def plotSimpleImages(image_list):
+    fig, ax = plt.subplots(nrows=len(image_list), figsize=(5, 6))
+    for index, image in enumerate(image_list):
+        if len(image_list) > 1:
+            ax[index].imshow(image, cmap="gray")
+        else:
+            ax.imshow(image, cmap="gray")
+    plt.show()
+
+
+def plotWordsInLine(line, words):
+    fig, ax = plt.subplots(nrows=len(words), figsize=(5, 8))
+    for index, word in enumerate(words):
+        ax[index].axis("off")
+        ax[index].imshow(word, cmap="gray")
+    plt.show()
+
+
+def grid_plot(images):
+    # distribute bottom row images
+    bottom_images = images[2:]
+    axes = []
+    fig = plt.figure()
+    # ---------- odd amount of images ----------
+    if len(bottom_images) % 2:
+        bottom_first_col = bottom_images[:len(bottom_images) // 2]
+        bottom_second_col = bottom_images[len(bottom_images) // 2:-1]
+        total_col_num = 2+len(bottom_first_col)+1
+        print("hi")
+        axes.append(plt.subplot2grid((total_col_num, 2), (total_col_num-1, 0), colspan=1))
+    # ---------- even amount of images ----------
+    else:
+        bottom_first_col = bottom_images[:len(bottom_images) // 2]
+        bottom_second_col = bottom_images[len(bottom_images) // 2:]
+        total_col_num = 2+len(bottom_first_col)
+    # grid: first two rows
+    for i in range(2):
+        axes.insert(0, (plt.subplot2grid((total_col_num, 2), (i, 0), colspan=2, rowspan=round(total_col_num * 0.25))))
+    # grid: last row
+    for idx, image in enumerate(bottom_first_col):
+        axes.insert(-2, (plt.subplot2grid((total_col_num, 2), (2 + idx, 0), colspan=1)))
+    for idx, image in enumerate(bottom_second_col):
+        axes.insert(-2, (plt.subplot2grid((total_col_num, 2), (2 + idx, 1), colspan=1)))
+    # plot all rows
+    print(len(axes), len(images))
+    for idx, ax in enumerate(axes):
+        ax.plot(images[idx])
+    plt.show()
+
 # ------------------------- Plotting functions -------------------------
 
 
@@ -222,7 +274,7 @@ def getLines(newImage):
     min_distance = calc_outlier(
         distances) if calc_outlier(distances) > 18 else 18
     print(distances, '\n', min_distance)
-    #min_distance = int(max(distances) /6) if int(max(distances) /6) > 22 else 22
+    # min_distance = int(max(distances) /6) if int(max(distances) /6) > 22 else 22
     locations_new = []
     idx = 0
     first = 0
@@ -424,9 +476,9 @@ def group_the_road_blocks(road_blocks):
         # split up the clusters
         if index < size-1 and (road_blocks[index+1] - road_blocks[index]) > 1 or \
            index == size-1 and len(road_blocks_cluster) > 0:
-            road_blocks_cluster_groups.append([road_blocks_cluster[0], road_blocks_cluster[-1]])
+            road_blocks_cluster_groups.append(
+                [road_blocks_cluster[0], road_blocks_cluster[-1]])
             road_blocks_cluster = []
-
     return road_blocks_cluster_groups
 
 
@@ -445,7 +497,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
         # check for fake roadblocks
         if len(road_blocks) != 0:
             nmap_rb = binary_image[cluster_of_interest[0] -
-                                int(upward_push):cluster_of_interest[-1]]
+                                   upward_push:cluster_of_interest[-1]]
             road_blocks_new = get_road_block_regions(nmap_rb)
             if road_blocks_new != road_blocks and len(road_blocks_new) < len(road_blocks):
                 print('Fake roadblock has been hit, better path found')
@@ -457,10 +509,13 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
         for road_blocks in road_blocks_cluster_groups:
             rb_end_reached = False  # true end of the roadblock
             i = 0
-            prev_pixel = binary_image[cluster_of_interest[0]:cluster_of_interest[-1], :][:, road_blocks[0]:road_blocks[1]+100][0, 0]
+            prev_pixel = binary_image[cluster_of_interest[0]:cluster_of_interest[-1],
+                                      :][:, road_blocks[0]:binary_image.shape[1]-1][0, 0]
+            # making sure prev_pixel is initiated with a 0
             step_back = 1
             while prev_pixel:
-                prev_pixel = binary_image[cluster_of_interest[0]:cluster_of_interest[-1], :][:, road_blocks[0]-step_back:road_blocks[1] + 100][0, 0]
+                prev_pixel = binary_image[cluster_of_interest[0]:cluster_of_interest[-1],
+                                          :][:, road_blocks[0]-step_back:binary_image.shape[1]-1][0, 0]
                 step_back += 1
             assert prev_pixel == 0, "prev_pixel=1 at the start of annulling, horizontal cut cannot be performed"
             while True:
@@ -469,12 +524,12 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
                     if prev_pixel == 1:
                         rb_end_reached = True
                         binary_image[cluster_of_interest[0]:cluster_of_interest[-1], :][:,
-                              road_blocks[0]:binary_image.shape[1]][0, 0:i] = 0
+                                                                                        road_blocks[0]:binary_image.shape[1]-1][0, 0:i] = 0
                     if rb_end_reached:
                         # detect fake roadblock end
                         fake_end_length = 20
                         if len(np.nonzero(binary_image[cluster_of_interest[0]:cluster_of_interest[-1], :][:,
-                              road_blocks[0]:binary_image.shape[1]][0, i:i+fake_end_length])[0]) != 0:
+                                                                                                          road_blocks[0]:binary_image.shape[1]][0, i:i+fake_end_length])[0]) != 0:
                             rb_end_reached = False
                             prev_pixel = 0
                             print("fake end")
@@ -495,9 +550,9 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
     for i, cluster_of_interest in tqdm(enumerate(hpp_clusters)):
         if i in fake_rb_indices:
             nmap = binary_image[cluster_of_interest[0] -
-                                int(upward_push):cluster_of_interest[-1]]
-            offset_from_top = cluster_of_interest[0]-int(upward_push)
-            height = agent_height[i] + int(upward_push)
+                                upward_push:cluster_of_interest[-1]]
+            offset_from_top = cluster_of_interest[0]-upward_push
+            height = agent_height[i] + upward_push
         else:
             nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[-1]]
             offset_from_top = cluster_of_interest[0]
@@ -533,22 +588,24 @@ def load_path(file_name):
     return np.loadtxt(file_name, delimiter=',', dtype=int)
 
 
-def extract_line_from_image(image, lower_line, upper_line):
-    lower_boundary = np.min(lower_line[:, 0])
+def extract_line_from_image(image, upper_line, lower_line):
     upper_boundary = np.min(upper_line[:, 0])
+    lower_boundary = np.max(lower_line[:, 0])
     img_copy = np.copy(image)
     r, c = img_copy.shape
-    for index in range(c-1):
-        img_copy[0:lower_line[index, 0], index] = 0
-        img_copy[upper_line[index, 0]:r, index] = 0
-
-    return img_copy[lower_boundary:upper_boundary, :]
+    x_axis = 0
+    y_axis = 1
+    for step in upper_line:
+        img_copy[0:step[x_axis], step[y_axis]] = 0
+    for step in lower_line:
+        img_copy[step[x_axis]:r, step[y_axis]] = 0
+    return img_copy[upper_boundary:lower_boundary, :]
 
 
 def trim_line(line):
     thresh = threshold_otsu(line)
-    binary = line > thresh
-    vertical_projection = np.sum(binary, axis=0)
+    line = line > thresh
+    vertical_projection = np.sum(line, axis=0)
     b1 = 0
     b2 = 0
     beginning = 0
@@ -559,33 +616,35 @@ def trim_line(line):
     for idx in range(len(vertical_projection)):
         if beginning == 0:
             if vertical_projection[idx] == 0:  # white
-                if b1 > 10:
-                    beginning = temp1
-                else:
+                if b1 <= 10:
                     temp1 = 0
                     b1 = 0
             elif vertical_projection[idx] != 0:  # black
                 if b1 == 0:  # start of black
-                    temp1 = idx - 5
+                    temp1 = idx - 5 if idx - 5 > 0 else idx
+                if b1 > 10:
+                    beginning = temp1
                 b1 += 1
 
         if end == 0:
             idx2 = len(vertical_projection) - (idx + 1)
             if vertical_projection[idx2] == 0:  # white
-
-                if b2 > 10:
-                    end = temp2 + 5
-                else:
+                if b2 <= 10:
                     temp2 = 0
                     b2 = 0
             elif vertical_projection[idx2] != 0:  # black
+
                 if b2 == 0:  # start of black
-                    temp2 = idx2
+                    temp2 = idx2 + 5 if idx + \
+                        5 < len(vertical_projection) else idx2
+                if b2 > 10:
+                    end = temp2
                 b2 += 1
+
         if end != 0 and beginning != 0:
             break
 
-    new_line = binary[:, beginning:end]
+    new_line = line[:, beginning:end]
     return new_line
 
 
@@ -593,6 +652,7 @@ def segment_words(line, vertical_projection):
     whitespace_lengths = []
     whitespace = 0
 
+    # get whitespae lengths
     for idx in range(5, len(vertical_projection)-4):
         if vertical_projection[idx] == 0:
             whitespace = whitespace + 1
@@ -631,87 +691,99 @@ def segment_words(line, vertical_projection):
 
     return new_dividers
 
+
+def slide_over_word(word, window_size, shift):
+    images = []
+    height, width = word.shape
+    for snap in range(0, width-window_size, shift):
+        images.append(word[:, snap:snap+window_size])
+        plotSimpleImages([word[:, snap:snap+window_size]])
+    return images
 # ------------------------- Load Image----------------------
 
-for i in range(1, 21):
-    image_num = i
-    img_path = f'data/image-data/binaryRenamed/{image_num}.jpg'
-    new_folder_path = f"data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
-    image = getImage(img_path)
-    image = rotateImage(image)
-    binary_image = get_binary(image)
 
-    # ------------------------- Obtain line segments ----------------------
+#
+image_num = 5
+img_path = f'data/image-data/binaryRenamed/{image_num}.jpg'
+new_folder_path = f"data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
+image = getImage(img_path)
+image = rotateImage(image)
+binary_image = get_binary(image)
 
-    if not os.path.exists(new_folder_path):
-        os.makedirs(new_folder_path)
-        # run image-processing
-        mid_lines, top_line, bottom_line, avg_lh, hist, thr_num = getLines(image)
-        plotHist(hist, thr_num,
-                 save=True, folder_path=new_folder_path, overwrite_path=False)
-        plotHistLinesOnImage(binary_image, mid_lines,
-                             save=True, folder_path=new_folder_path, overwrite_path=False)
-        paths = find_paths(mid_lines, binary_image, avg_lh)
-        plotPathsNextToImage(binary_image, paths,
-                             save=True, folder_path=new_folder_path, overwrite_path=False)
-        # save paths
-        for idx, path in enumerate(paths):
-            save_path(path, f"{new_folder_path}/path_{idx}.csv")
-    else:
-        # load paths
-        file_paths_list = sorted(
-            glob.glob(f'{new_folder_path}/*.csv'), key=get_key)
-        paths = []  # a* paths
-        sections_loaded = []
-        for file_path in file_paths_list:
-            line_path = load_path(file_path)
-            paths.append(line_path)
-        plotPathsNextToImage(binary_image, paths, save=False)
+# ------------------------- Obtain line segments ----------------------
 
-#plotPathsNextToImage(binary_image, paths)
+if not os.path.exists(new_folder_path):
+    os.makedirs(new_folder_path)
+    # run image-processing
+    mid_lines, top_line, bottom_line, avg_lh, hist, thr_num = getLines(
+        image)
+    plotHist(hist, thr_num,
+             save=True, folder_path=new_folder_path, overwrite_path=False)
+    plotHistLinesOnImage(binary_image, mid_lines,
+                         save=True, folder_path=new_folder_path, overwrite_path=False)
+    paths = find_paths(mid_lines, binary_image, avg_lh)
+    plotPathsNextToImage(binary_image, paths,
+                         save=True, folder_path=new_folder_path, overwrite_path=False)
+    # save paths
+    for idx, path in enumerate(paths):
+        save_path(path, f"{new_folder_path}/path_{idx}.csv")
+else:
+    # load paths
+    file_paths_list = sorted(
+        glob.glob(f'{new_folder_path}/*.csv'), key=get_key)
+    paths = []  # a* paths
+    sections_loaded = []
+    for file_path in file_paths_list:
+        line_path = load_path(file_path)
+        paths.append(line_path)
+   # plotPathsNextToImage(binary_image, paths, save=False)
 
-# # extract sections from binary image determined by path
-# line_images = []
-# line_count = len(paths)
-# # fig, ax = plt.subplots(figsize=(10,10), nrows=line_count-1)
-# for line_index in range(line_count-1):
-#     line_image = extract_line_from_image(
-#         binary_image, paths[line_index], paths[line_index+1])
-#     line_images.append(line_image)
-# #     ax[line_index].imshow(invert(line_image), cmap="gray")
-#
-# # plt.show()
-#
-#
-# # binarize the image, guassian blur will remove any noise in the image
-# for line in range(len(line_images)):
-#     line_num = line
-#     first_line = trim_line(line_images[line_num])
-#     vertical_projection = np.sum(first_line, axis=0)
-#
-#     # plot the vertical projects
-#     fig, ax = plt.subplots(nrows=2, figsize=(10, 5))
-#     plt.xlim(0, first_line.shape[1])
-#     ax[0].imshow(first_line, cmap="gray")
-#     ax[1].plot(vertical_projection)
-#     plt.show()
-#
-#     # we will go through the vertical projections and
-#     # find the sequence of consecutive white spaces in the image
-#
-#     dividers = segment_words(first_line, vertical_projection)
-#
-#     # now plot the findings
-#     fig, ax = plt.subplots(nrows=len(dividers), figsize=(5, 6))
-#     for index, window in enumerate(dividers):
-#         ax[index].axis("off")
-#         ax[index].imshow(first_line[:, window[0]:window[1]], cmap="gray")
-#
-#     plt.show()
-#plotPathsNextToImage(binary_image, paths)
+# plotPathsNextToImage(binary_image, paths)
 
-#plotPathsNextToImage(binary_image, paths)
-# - get min y of upper path  and max Y of lower path coordinates
-# - create a numpy array with max-min height and width = path_width
-#     - loop through the rows of the new array
-#         - fill in the new array with zeros everywhere, except at the indices where the loaded section has values
+# extract sections from binary image determined by path
+line_images = []
+line_count = len(paths)
+# fig, ax = plt.subplots(figsize=(10,10), nrows=line_count-1)
+for line_index in range(line_count-1):
+    line_image = extract_line_from_image(
+        binary_image, paths[line_index], paths[line_index+1])
+    line_images.append(line_image)
+#     ax[line_index].imshow(invert(line_image), cmap="gray")
+
+# plt.show()
+
+
+# binarize the image, guassian blur will remove any noise in the image
+words_in_lines = []
+sliding_words_in_line = []
+for line_num in range(len(line_images)):
+    line = trim_line(line_images[line_num])
+    if line.shape[0] == 0 or line.shape[1] == 0:
+        continue
+    vertical_projection = np.sum(line, axis=0)
+
+    # plot the vertical projects
+    fig, ax = plt.subplots(nrows=2, figsize=(10, 5))
+    plt.xlim(0, line.shape[1])
+    ax[0].imshow(line, cmap="gray")
+    ax[1].plot(vertical_projection)
+    plt.show()
+
+    # we will go through the vertical projections and
+    # find the sequence of consecutive white spaces in the image
+
+    dividers = segment_words(line, vertical_projection)
+    words = []
+    sliding_words = []
+    box_width = 70
+    shift = 20
+    print(line.shape)
+    for window in dividers:
+        word = line[:, window[0]:window[1]]
+        trimmed_word = trim_line(
+            np.rot90(trim_line(np.rot90(word).astype(int)), axes=(1, 0)).astype(int))
+        sliding_words.append(slide_over_word(trimmed_word, box_width, shift))
+        plotSimpleImages(sliding_words[-1])
+        words.append(trimmed_word)
+    words_in_lines.append(words)
+    plotWordsInLine(line, words)
