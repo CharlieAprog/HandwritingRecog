@@ -152,15 +152,11 @@ def plotSimpleImages(image_list):
     plt.show()
 
 
-def plotWordsInLine(line, words, vertical_projection):
-    fig, ax = plt.subplots(nrows=len(words) + 2, figsize=(5, 10))
-
-    plt.xlim(0, line.shape[1])
-    ax[0].imshow(line, cmap="gray")
-    ax[1].plot(vertical_projection)
+def plotWordsInLine(line, words):
+    fig, ax = plt.subplots(nrows=len(words), figsize=(5, 8))
     for index, word in enumerate(words):
-        ax[index + 2].axis("off")
-        ax[index + 2].imshow(word, cmap="gray")
+        ax[index].axis("off")
+        ax[index].imshow(word, cmap="gray")
     plt.show()
 
 
@@ -247,7 +243,7 @@ def getLines(newImage):
     min_distance = calc_outlier(
         distances) if calc_outlier(distances) > 18 else 18
     print(distances, '\n', min_distance)
-    #min_distance = int(max(distances) /6) if int(max(distances) /6) > 22 else 22
+    # min_distance = int(max(distances) /6) if int(max(distances) /6) > 22 else 22
     locations_new = []
     idx = 0
     first = 0
@@ -666,6 +662,14 @@ def segment_words(line, vertical_projection):
 
     return new_dividers
 
+
+def slide_over_word(word, window_size, shift):
+    images = []
+    height, width = word.shape
+    for snap in range(0, width-window_size, shift):
+        images.append(word[:, snap:snap+window_size])
+        plotSimpleImages([word[:, snap:snap+window_size]])
+    return images
 # ------------------------- Load Image----------------------
 
 
@@ -705,7 +709,7 @@ else:
         paths.append(line_path)
    # plotPathsNextToImage(binary_image, paths, save=False)
 
-#plotPathsNextToImage(binary_image, paths)
+# plotPathsNextToImage(binary_image, paths)
 
 # extract sections from binary image determined by path
 line_images = []
@@ -722,8 +726,11 @@ for line_index in range(line_count-1):
 
 # binarize the image, guassian blur will remove any noise in the image
 words_in_lines = []
+sliding_words_in_line = []
 for line_num in range(len(line_images)):
     line = trim_line(line_images[line_num])
+    if line.shape[0] == 0 or line.shape[1] == 0:
+        continue
     vertical_projection = np.sum(line, axis=0)
 
     # plot the vertical projects
@@ -738,11 +745,16 @@ for line_num in range(len(line_images)):
 
     dividers = segment_words(line, vertical_projection)
     words = []
+    sliding_words = []
+    box_width = 70
+    shift = 20
+    print(line.shape)
     for window in dividers:
         word = line[:, window[0]:window[1]]
         trimmed_word = trim_line(
             np.rot90(trim_line(np.rot90(word).astype(int)), axes=(1, 0)).astype(int))
+        sliding_words.append(slide_over_word(trimmed_word, box_width, shift))
+        plotSimpleImages(sliding_words[-1])
         words.append(trimmed_word)
-
     words_in_lines.append(words)
-    plotWordsInLine(line, words, vertical_projection)
+    plotWordsInLine(line, words)
