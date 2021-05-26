@@ -140,6 +140,18 @@ def plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage, save=False
     ax[3].imshow(newImage, cmap='gray')
 
     plt.tight_layout()
+
+
+def plotSimpleImages(image_list):
+    fig, ax = plt.subplots(nrows=len(image_list), figsize=(5, 6))
+    for index, image in enumerate(image_list):
+        if len(image_list) > 1:
+            ax[index].imshow(image, cmap="gray")
+        else:
+            ax.imshow(image, cmap="gray")
+    plt.show()
+
+
 # ------------------------- Plotting functions -------------------------
 
 
@@ -539,16 +551,18 @@ def load_path(file_name):
     return np.loadtxt(file_name, delimiter=',', dtype=int)
 
 
-def extract_line_from_image(image, lower_line, upper_line):
-    lower_boundary = np.min(lower_line[:, 0])
+def extract_line_from_image(image, upper_line, lower_line):
     upper_boundary = np.min(upper_line[:, 0])
+    lower_boundary = np.max(lower_line[:, 0])
     img_copy = np.copy(image)
     r, c = img_copy.shape
-    for index in range(c-1):
-        img_copy[0:lower_line[index, 0], index] = 0
-        img_copy[upper_line[index, 0]:r, index] = 0
-
-    return img_copy[lower_boundary:upper_boundary, :]
+    x_axis = 0
+    y_axis = 1
+    for step in upper_line:
+        img_copy[0:step[x_axis], step[y_axis]] *= 0
+    for step in lower_line:
+        img_copy[step[x_axis]:r, step[y_axis]] *= 0
+    return img_copy[upper_boundary:lower_boundary, :]
 
 
 def trim_line(line):
@@ -675,7 +689,7 @@ else:
     for file_path in file_paths_list:
         line_path = load_path(file_path)
         paths.append(line_path)
-    plotPathsNextToImage(binary_image, paths, save=False)
+   # plotPathsNextToImage(binary_image, paths, save=False)
 
 #plotPathsNextToImage(binary_image, paths)
 
