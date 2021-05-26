@@ -170,7 +170,6 @@ def grid_plot(images):
         bottom_first_col = bottom_images[:len(bottom_images) // 2]
         bottom_second_col = bottom_images[len(bottom_images) // 2:-1]
         total_col_num = 2+len(bottom_first_col)+1
-        print("hi")
         axes.append(plt.subplot2grid((total_col_num, 2), (total_col_num-1, 0), colspan=1))
     # ---------- even amount of images ----------
     else:
