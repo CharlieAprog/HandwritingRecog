@@ -18,6 +18,7 @@ import imutils
 import cv2
 from matplotlib import cm
 from matplotlib import pyplot as plt
+from matplotlib.patches import Rectangle
 import pprint
 from heapq import *
 
@@ -160,7 +161,7 @@ def plotWordsInLine(line, words):
     plt.show()
 
 
-def grid_plot(images):
+def plotGrid(images):
     # distribute bottom row images
     bottom_images = images[2:]
     axes = []
@@ -188,6 +189,61 @@ def grid_plot(images):
     print(len(axes), len(images))
     for idx, ax in enumerate(axes):
         ax.plot(images[idx])
+    plt.show()
+
+
+def plotConnectedComponentLabel(path):
+    """
+    Plots the connected components of an image file.
+    In our system it should take a binary image (black background, white foreground) as 'path'.
+    """
+    # Getting the input image
+    img = cv2.imread(path, 0)
+    # Converting those pixels with values 1-127 to 0 and others to 1
+    img = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1]
+    print(type(img))
+    print(type(img[0]), img[0])
+    # Applying cv2.connectedComponents()
+    num_labels, labels = cv2.connectedComponents(img)
+
+    # Map component labels to hue val, 0-179 is the hue range in OpenCV
+    label_hue = np.uint8(179 * labels / np.max(labels))
+    blank_ch = 255 * np.ones_like(label_hue)
+    labeled_img = cv2.merge([label_hue, blank_ch, blank_ch])
+
+    # Converting cvt to BGR
+    labeled_img = cv2.cvtColor(labeled_img, cv2.COLOR_HSV2BGR)
+
+    # set bg label to black
+    labeled_img[label_hue == 0] = 0
+
+    # Showing Original Image
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+    plt.title("Orginal Image")
+    plt.show()
+
+    # Showing Image after Component Labeling
+    plt.imshow(cv2.cvtColor(labeled_img, cv2.COLOR_BGR2RGB))
+    plt.axis('off')
+    plt.title("Image after Component Labeling")
+    plt.show()
+
+
+def plotConnectedComponentBoundingBoxes(image, rectangle_boundaries):
+    plt.imshow(image, cmap="gray")
+    ax = plt.gca()
+    for idx, box in enumerate(rectangle_boundaries):
+        if idx == 0:
+            print(box)
+        y_min = box[0][1]
+        y_max = box[0][0]
+        x_min = box[1][0]
+        x_max = box[1][1]
+        width = x_max - x_min
+        height = y_max - y_min
+        ax.add_patch(Rectangle((x_min, y_min), width, height, linewidth=1, edgecolor='r', facecolor='none'))
+    plt.title("Image with bounding boxes")
     plt.show()
 # ------------------------- Plotting functions -------------------------
 
@@ -739,6 +795,9 @@ else:
 
 # plotPathsNextToImage(binary_image, paths)
 
+# |--------------------------------------------|
+# |            WORD SEGMENTATION               |
+# |--------------------------------------------|
 # extract sections from binary image determined by path
 line_images = []
 line_count = len(paths)
@@ -786,3 +845,36 @@ for line_num in range(len(line_images)):
         words.append(trimmed_word)
     words_in_lines.append(words)
     plotWordsInLine(line, words)
+
+
+# |--------------------------------------------|
+# |        CHARACTER SEGMENTATION              |
+# |--------------------------------------------|
+image = cv2.imread("characterSegmentation_TestImage.jpeg", 0)
+image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)[1]
+num_labels, labels = cv2.connectedComponents(image)
+
+clusters = [[] for _ in range(num_labels)]
+for row_idx, row in enumerate(labels):
+    for col_idx, col in enumerate(row):
+        clusters[col].append([row_idx, col_idx])
+del clusters[0]
+
+rectangle_boundaries = []
+for idx, cluster in enumerate(clusters):
+    # initialize starting values
+    y_max, y_min, x_max, x_min = [image.shape[0], 0, 0, image.shape[1]]
+
+    for coordinate in cluster:
+        if coordinate[0] < y_max:
+            y_max = coordinate[0]
+        elif coordinate[0] > y_min:
+            y_min = coordinate[0]
+        if coordinate[1] > x_max:
+            x_max = coordinate[1]
+        elif coordinate[1] < x_min:
+            x_min = coordinate[1]
+    rectangle_boundaries.append([[y_max, y_min],[x_min, x_max]])
+
+plotConnectedComponentBoundingBoxes(image, rectangle_boundaries)
+
