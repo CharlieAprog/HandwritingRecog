@@ -7,7 +7,7 @@ from data_investigation import *
 #find standard deviation of new cropped dataset
 #std_x,std_y = findstd("HandwritingRecog/data/Char_Recog/hhd_dataset/hdd_dataset/TRAIN/*/*.png",avg_x,avg_y,img_size_all_x,img_size_all_y)
 #create new dataset, pad according to max dimensions, save
-CropAndPadding("data/Char_Recog/monkbrill/*/*.pgm")
+CropAndPadding("C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/data/Char_Recog/hhd_dataset/hhd_dataset/TRAIN/*/*.png")
 #split monkbrill_datasets into 80-20 train-test split
 #train_test_split("data/Char_Recog/cropped-padded-img-data/","data/binarized_monkbrill_split_40x40")
-dataset_split("C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/data/Char_Recog/cropped-padded-img-data/")
+#dataset_split("C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/data/Char_Recog/cropped-padded-img-data/")
