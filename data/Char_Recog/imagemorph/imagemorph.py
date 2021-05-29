@@ -121,7 +121,6 @@ def imagemorph_folder_balance(folder_path, double_current_data=False, even_data=
             res = imagemorph(img, amp, sigma, h, w)
             out_name = label + '/' + 'double' + str(cnt) + '.png'
             x = cv.imwrite(os.path.join(path, out_name), res)
-            print(x)
             cnt += 1
     if even_data:
         max_label_cnt = max(label_distribution.values())
