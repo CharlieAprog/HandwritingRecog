@@ -93,6 +93,7 @@ def imagemorph_folder_balance(folder_path, double_current_data=False, even_data=
     label_distribution = {}
     folders = image_names[0].split('/')
     prev_label = folders[8]
+    print(prev_label)
     label_cnt = 0
     for img_name in image_names:
         folders = img_name.split('/')
@@ -106,7 +107,9 @@ def imagemorph_folder_balance(folder_path, double_current_data=False, even_data=
     label_distribution[label] = label_cnt
     print(label_distribution)
     cnt = 0
-    path = '/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/binarized_hdd_40x40'
+    # if data should be saved in different folder
+    # path = '/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/binarized_hdd_40x40'
+    path = '/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/grayscale_hhd_224x224'
     if double_current_data:
         amp = random.uniform(1.1, 1.6)
         sigma = random.uniform(2.5, 4.0)
@@ -118,6 +121,7 @@ def imagemorph_folder_balance(folder_path, double_current_data=False, even_data=
             res = imagemorph(img, amp, sigma, h, w)
             out_name = label + '/' + 'double' + str(cnt) + '.png'
             x = cv.imwrite(os.path.join(path, out_name), res)
+            print(x)
             cnt += 1
     if even_data:
         max_label_cnt = max(label_distribution.values())
@@ -132,8 +136,8 @@ def morph(folder_path, label_to_morph, morph_times, new_folder=False):
     image_names = glob.glob(folder_path)
     cnt = 0
     # path to where the morphed images are saved, each char will get its own folder
-    path = '/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/binarized_hdd_40x40'
-    os.chdir(path)
+    path = '/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/binarized_hhd_40x40'
+    #os.chdir(path)
     folders = image_names[0].split('/')
     prev_label = folders[8]
     for i in range(0, morph_times):
@@ -156,8 +160,9 @@ def morph(folder_path, label_to_morph, morph_times, new_folder=False):
                 res = imagemorph(img, amp, sigma, h, w)
                 out_name = label + '/' + str(cnt) + '.png'
                 x = cv.imwrite(os.path.join(path, out_name), res)
+                print(x)
                 cnt += 1
 
 
 if __name__ == '__main__':
-    imagemorph_folder_balance('/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/binarized_hdd_40x40/*/*.png', double_current_data=False)
+    imagemorph_folder_balance('/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/grayscale_hhd_224x224/*/*.png', double_current_data=True)
