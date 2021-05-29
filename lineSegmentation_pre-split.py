@@ -171,7 +171,8 @@ def plotGrid(images):
         bottom_first_col = bottom_images[:len(bottom_images) // 2]
         bottom_second_col = bottom_images[len(bottom_images) // 2:-1]
         total_col_num = 2+len(bottom_first_col)+1
-        axes.append(plt.subplot2grid((total_col_num, 2), (total_col_num-1, 0), colspan=1))
+        axes.append(plt.subplot2grid((total_col_num, 2),
+                                     (total_col_num-1, 0), colspan=1))
     # ---------- even amount of images ----------
     else:
         bottom_first_col = bottom_images[:len(bottom_images) // 2]
@@ -179,12 +180,15 @@ def plotGrid(images):
         total_col_num = 2+len(bottom_first_col)
     # grid: first two rows
     for i in range(2):
-        axes.insert(0, (plt.subplot2grid((total_col_num, 2), (i, 0), colspan=2, rowspan=round(total_col_num * 0.25))))
+        axes.insert(0, (plt.subplot2grid((total_col_num, 2), (i, 0),
+                                         colspan=2, rowspan=round(total_col_num * 0.25))))
     # grid: last row
     for idx, image in enumerate(bottom_first_col):
-        axes.insert(-2, (plt.subplot2grid((total_col_num, 2), (2 + idx, 0), colspan=1)))
+        axes.insert(-2, (plt.subplot2grid((total_col_num, 2),
+                                          (2 + idx, 0), colspan=1)))
     for idx, image in enumerate(bottom_second_col):
-        axes.insert(-2, (plt.subplot2grid((total_col_num, 2), (2 + idx, 1), colspan=1)))
+        axes.insert(-2, (plt.subplot2grid((total_col_num, 2),
+                                          (2 + idx, 1), colspan=1)))
     # plot all rows
     print(len(axes), len(images))
     for idx, ax in enumerate(axes):
@@ -242,7 +246,8 @@ def plotConnectedComponentBoundingBoxes(image, rectangle_boundaries):
         x_max = box[1][1]
         width = x_max - x_min
         height = y_max - y_min
-        ax.add_patch(Rectangle((x_min, y_min), width, height, linewidth=1, edgecolor='r', facecolor='none'))
+        ax.add_patch(Rectangle((x_min, y_min), width, height,
+                               linewidth=1, edgecolor='r', facecolor='none'))
     plt.title("Image with bounding boxes")
     plt.show()
 # ------------------------- Plotting functions -------------------------
@@ -279,7 +284,7 @@ def rotateImage(image):
     change = 90 - -1 * np.mean(angles)
     newImage = cv2.bitwise_not(imutils.rotate_bound(image, -change))
 
-    # plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage)
+    # plotHoughTransform(hspace, theta, dist, x0, x1, origin,image , newImage)
 
     # Compute difference between the two lines
     angle_difference = np.max(angles) - np.min(angles)
@@ -874,7 +879,6 @@ for idx, cluster in enumerate(clusters):
             x_max = coordinate[1]
         elif coordinate[1] < x_min:
             x_min = coordinate[1]
-    rectangle_boundaries.append([[y_max, y_min],[x_min, x_max]])
+    rectangle_boundaries.append([[y_max, y_min], [x_min, x_max]])
 
 plotConnectedComponentBoundingBoxes(image, rectangle_boundaries)
-
