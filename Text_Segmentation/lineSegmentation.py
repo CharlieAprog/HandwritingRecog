@@ -36,9 +36,9 @@ def get_binary(img):
     return binary
 
 
-# ------------------------- Hough Transform -------------------------
-
-
+# |-----------------------------------------|
+# |             Hough Transform             |
+# |-----------------------------------------|
 def rotateImage(image):
     # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
     tested_angles = np.linspace(-np.pi * 40 / 100, -np.pi * 50 / 100, 100)
@@ -73,10 +73,19 @@ def rotateImage(image):
     return newImage
 
 
-# ------------------------- Hough Transform -------------------------
-
-# ------------------------- Histogram part -------------------------
-
+# |-----------------------------------------|
+# |         Histogram Projection            |
+# |-----------------------------------------|
+def calc_outlier(data, method="std"):
+    if method == "iqr":
+        # method1: interquartile
+        q3, q1 = np.percentile(data, [75, 25])
+        iqr = q3 - q1
+        outlier = q1 - 1.5 * iqr
+    else:
+        # method2: standard deviation
+        outlier = np.mean(data) - np.std(data)
+    return outlier
 
 @timer
 def getLines(newImage):
@@ -192,26 +201,3 @@ def getLines(newImage):
     mid2.append(bottom_line)
 
     return mid2, top_line, bottom_line, avg_lh_final, hist, thr_num,
-
-
-def calc_outlier(data, method="std"):
-    if method == "iqr":
-        # method1: interquartile
-        q3, q1 = np.percentile(data, [75, 25])
-        iqr = q3 - q1
-        outlier = q1 - 1.5 * iqr
-    else:
-        # method2: standard deviation
-        outlier = np.mean(data) - np.std(data)
-    return outlier
-
-
-def get_binary(img):
-    mean = np.mean(img)
-    if mean == 0.0 or mean == 1.0:
-        return img
-
-    thresh = threshold_otsu(img)
-    binary = img <= thresh
-    binary = binary * 1
-    return binary

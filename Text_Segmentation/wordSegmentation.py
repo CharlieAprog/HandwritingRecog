@@ -1,5 +1,7 @@
 from skimage.filters import threshold_otsu
 import numpy as np
+from lineSegmentation import timer
+
 
 def extract_line_from_image(image, upper_line, lower_line):
     upper_boundary = np.min(upper_line[:, 0])
@@ -60,7 +62,7 @@ def trim_line(line):
     new_line = line[:, beginning:end]
     return new_line
 
-
+@timer
 def segment_words(line, vertical_projection):
     whitespace_lengths = []
     whitespace = 0

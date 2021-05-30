@@ -168,9 +168,6 @@ def plotGrid(images):
         bottom_first_col = bottom_images[:len(bottom_images) // 2]
         bottom_second_col = bottom_images[len(bottom_images) // 2:-1]
         total_col_num = 2 + len(bottom_first_col) + 1
-        axes.append(
-            plt.subplot2grid((total_col_num, 2), (total_col_num - 1, 0),
-                             colspan=1))
     # ---------- even amount of images ----------
     else:
         bottom_first_col = bottom_images[:len(bottom_images) // 2]
@@ -178,20 +175,19 @@ def plotGrid(images):
         total_col_num = 2 + len(bottom_first_col)
     # grid: first two rows
     for i in range(2):
-        axes.insert(0, (plt.subplot2grid((total_col_num, 2), (i, 0),
-                                         colspan=2,
-                                         rowspan=round(total_col_num * 0.25))))
+        axes.append(plt.subplot2grid((total_col_num, 2), (i, 0), colspan=2, rowspan=round(total_col_num * 0.25)))
     # grid: last row
     for idx, image in enumerate(bottom_first_col):
-        axes.insert(-2, (plt.subplot2grid(
-            (total_col_num, 2), (2 + idx, 0), colspan=1)))
+        axes.append(plt.subplot2grid((total_col_num, 2), (2 + idx, 0), colspan=1))
     for idx, image in enumerate(bottom_second_col):
-        axes.insert(-2, (plt.subplot2grid(
-            (total_col_num, 2), (2 + idx, 1), colspan=1)))
+        axes.append(plt.subplot2grid((total_col_num, 2), (2 + idx, 1), colspan=1))
     # plot all rows
     print(len(axes), len(images))
     for idx, ax in enumerate(axes):
-        ax.plot(images[idx])
+        if len(images[idx].shape) == 2:
+            ax.imshow(images[idx])
+        else:
+            ax.plot(images[idx])
     plt.show()
 
 
