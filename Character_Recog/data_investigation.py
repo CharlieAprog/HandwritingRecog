@@ -10,8 +10,8 @@ import re
 from pathlib import Path
 import os
 import uuid
-import splitfolders
-import imutils
+#import splitfolders
+#import imutils
 
 # input: path to some image data
 # output: print size stats of the images
