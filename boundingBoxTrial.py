@@ -5,7 +5,7 @@ from Text_Segmentation.textSegmentation import text_segment
 from Text_Segmentation import *
 from segmentation_to_recog import *
 
-image_num = 8
+image_num = 14
 window_size = 70
 shift = 20
 #lines = the images of each line of an image
@@ -13,7 +13,7 @@ shift = 20
 #sliding_words = sliding window of each of these words
 lines, words_in_lines = text_segment(image_num) 
 sliding_words = get_sliding_words(words_in_lines,window_size, shift)
-word_box_images = character_segment(words_in_lines[2][2]) # list of numpy array (images)
+word_box_images = character_segment(words_in_lines[0][0]) # list of numpy array (images)
 # plotSimpleImages(word_box_images)
 # plotSimpleImages(sliding_words[2][2])
 
@@ -28,7 +28,6 @@ plotSimpleImages(sliding_words[2][2])
 
 for slide in sliding_words[2][2]:
     slide = slide.astype(np.uint8)
-    
     label, prob_bounding_box = get_label_probability(slide, model)
     print(label, prob_bounding_box)
 
