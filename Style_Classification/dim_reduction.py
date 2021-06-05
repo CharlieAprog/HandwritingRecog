@@ -44,7 +44,7 @@ herodian_imgs = {char:
                  for char in herodian_characters}
 
 pca = PCA(2)
-# TODO: Augment the images for each character in each image so that we have at least enough to prevent PCA from running
+# TODO: Augment the images for each character in each style so that we have at least enough to prevent PCA from running
 # into too few instances which leads to insufficient components
 pca_archaic_imgs = {char: pca.fit_transform(archaic_imgs[char]) for char in archaic_imgs.keys()}
 pca_hasmonean_imgs = {char: pca.fit_transform(hasmonean_imgs[char]) for char in hasmonean_imgs.keys()}
