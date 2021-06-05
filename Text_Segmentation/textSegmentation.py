@@ -1,12 +1,14 @@
 import os
 import csv
+import cv2
 import numpy as np
 import glob
-from plotting import *
-from lineSegmentation import *
-from wordSegmentation import *
-from characterSegmentation import *
-from aStar import *
+from Text_Segmentation.plotting import *
+from Text_Segmentation.lineSegmentation import *
+from Text_Segmentation.wordSegmentation import *
+from Text_Segmentation.characterSegmentation import *
+from Text_Segmentation.aStar import *
+
 
 
 def save_path(path, file_name):
@@ -31,11 +33,11 @@ def load_path(file_name):
 # |----------------------------------------------|
 # |    Global variables used by other files      |
 # |----------------------------------------------|
-image_num = 4
-img_path = f'../data/image-data/binaryRenamed/{image_num}.jpg'
-new_folder_path = f"../data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
+def text_segment(image_num):
+    img_path = f'data/image-data/binaryRenamed/{image_num}.jpg'
+    new_folder_path = f"data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
 
-if __name__ == "__main__":
+
 
     # |--------------------------------------------|
     # |            LINE SEGMENTATION               |
@@ -93,11 +95,14 @@ if __name__ == "__main__":
 
     words_in_lines = []  #|-------- pad obtained lines
     sliding_words_in_line = []
+    lines = []
     for line_num in range(len(line_images)):
         line = trim_line(line_images[line_num])
         if line.shape[0] == 0 or line.shape[1] == 0:
             continue
         vertical_projection = np.sum(line, axis=0)
+        lines.append(line)
+        
 
         # # plot the vertical projects
         # fig, ax = plt.subplots(nrows=2, figsize=(10, 5))
@@ -111,14 +116,10 @@ if __name__ == "__main__":
 
         dividers = segment_words(line, vertical_projection)
         words = []
-        sliding_words = []
-        box_width = 70
-        shift = 20
-        print(line.shape)
+        
         for window in dividers:
             word = line[:, window[0]:window[1]]
             trimmed_word = trim_line(np.rot90(trim_line(np.rot90(word).astype(int)),axes=(1, 0)).astype(int))
-            sliding_words.append(slide_over_word(trimmed_word, box_width, shift))
             #plotSimpleImages(sliding_words[-1])
             words.append(trimmed_word)
         words_in_lines.append(words)
@@ -127,20 +128,12 @@ if __name__ == "__main__":
         # Uncomment the two lines below if the background/foreground values have to be swapped
         # images_boolean_to_binary = [np.where(image==False, 0, 1) if not str(image[0]).isdigit() else image for image in images]
         # plotGrid(images_boolean_to_binary)
-        plotGrid(images)
+        #plotGrid(images)
     print("Word segmentation complete.")
+    return lines, words_in_lines
 
         # plotWordsInLine(line, words)
 
-    # |--------------------------------------------|
-    # |        CHARACTER SEGMENTATION              |
-    # |--------------------------------------------|
-    print("Running character segmentation...")
-    image = cv2.imread("characterSegmentation_TestImage.jpeg", 0)
-    image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)[1]
-    num_labels, labels = cv2.connectedComponents(image)
-    clusters = getComponentClusters(num_labels, labels)
-    box_boundaries = getBoundingBoxBoundaries(image, clusters)
 
-    plotConnectedComponentBoundingBoxes(image, box_boundaries)
-    print("Character segmentation complete.")
+    
+

@@ -1,4 +1,4 @@
-from plotting import *
+from Text_Segmentation.plotting import *
 
 
 def slide_over_word(word, window_size, shift):
@@ -8,6 +8,15 @@ def slide_over_word(word, window_size, shift):
         images.append(word[:, snap:snap + window_size])
         #plotSimpleImages([word[:, snap:snap + window_size]])
     return images
+
+def get_sliding_words(words_in_lines, window_size, shift):
+    sliding_words_in_line = []
+    for line in words_in_lines:
+        sliding_words = []
+        for word in line:
+            sliding_words.append(slide_over_word(word, window_size, shift))
+        sliding_words_in_line.append(sliding_words)
+    return sliding_words_in_line
 
 
 def getComponentClusters(num_labels, labels):
@@ -35,3 +44,22 @@ def getBoundingBoxBoundaries(image, clusters):
                 x_min = coordinate[1]
         box_boundaries.append([[y_max, y_min], [x_min, x_max]])
     return box_boundaries
+
+def character_segment(word):
+    word = word.astype(np.uint8)
+    print("Running character segmentation...")
+    num_labels, labels = cv2.connectedComponents(word)
+    clusters = getComponentClusters(num_labels, labels)
+    box_boundaries = getBoundingBoxBoundaries(word, clusters)
+    print(box_boundaries[0])
+    box_images = []
+    for box in box_boundaries:
+        y_min = box[0][0]
+        y_max = box[0][1]
+        x_min = box[1][0]
+        x_max = box[1][1]
+        box_img = word[y_min:y_max,x_min:x_max]
+        box_images.append(box_img)
+    #plotConnectedComponentBoundingBoxes(word, box_boundaries)
+    print("Character segmentation complete.")
+    return box_images

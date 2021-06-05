@@ -1,5 +1,6 @@
 import numpy as np
 from heapq import *
+from tqdm import tqdm
 
 
 def heuristic(a, b):

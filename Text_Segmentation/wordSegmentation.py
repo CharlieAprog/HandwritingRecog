@@ -1,6 +1,6 @@
 from skimage.filters import threshold_otsu
 import numpy as np
-from lineSegmentation import timer
+from Text_Segmentation.lineSegmentation import timer
 
 
 def extract_line_from_image(image, upper_line, lower_line):

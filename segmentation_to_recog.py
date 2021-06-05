@@ -46,7 +46,9 @@ class TheRecognizer(nn.Module):
         self.load_state_dict(ckpt['weights'])
         self.opt.load_state_dict(ckpt['optimizer'])
 
-
+# input: image, new_height, new_width
+# output: the same image but resized, padded with
+# no distortions
 def resize_pad(img, height_all, width_all):
     height, width = img.shape
     if height > width:

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import cv2
 import os
-from textSegmentation import image_num
+# from Text_Segmentation.textSegmentation import image_num
 
 
 def handle_saving(plotting_function):
