@@ -135,7 +135,7 @@ def morph(folder_path, label_to_morph, morph_times, new_folder=False):
     image_names = glob.glob(folder_path)
     cnt = 0
     # path to where the morphed images are saved, each char will get its own folder
-    path = '/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/binarized_hhd_40x40'
+    path = '/home/jan/PycharmProjects/HandwritingRecog/data/characters_for_style_classification_balance_morph/Herodian'
     #os.chdir(path)
     folders = image_names[0].split('/')
     prev_label = folders[8]
@@ -164,4 +164,4 @@ def morph(folder_path, label_to_morph, morph_times, new_folder=False):
 
 
 if __name__ == '__main__':
-    imagemorph_folder_balance('/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/grayscale_hhd_224x224/*/*.png', double_current_data=True)
+    imagemorph_folder_balance('/home/jan/PycharmProjects/HandwritingRecog/data/characters_for_style_classification_balance_morph/Herodian/*/*.png', even_data=True)
