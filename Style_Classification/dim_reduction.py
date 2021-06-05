@@ -32,7 +32,7 @@ herodian_characters = ['Taw', 'Pe', 'Kaf-final', 'Lamed', 'Tet', 'Nun-final', 'T
                        'Bet', 'Shin', 'Resh', 'Zayin', 'Alef', 'Tsadi-medial', 'Het']
 
 # Retrieve img lists from each class' each character AND resize them
-new_size = (32, 32)
+new_size = (32, 32)  # change this to something which is backed up by a reason
 archaic_imgs = {char:
                 [cv2.resize(img, new_size).flatten() for img in get_style_char_images(style_archaic_path, char)]
                 for char in archaic_characters}
