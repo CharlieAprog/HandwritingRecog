@@ -6,8 +6,9 @@ def slide_over_word(word, window_size, shift):
     height, width = word.shape
     for snap in range(0, width - window_size, shift):
         images.append(word[:, snap:snap + window_size])
-        #plotSimpleImages([word[:, snap:snap + window_size]])
+        # plotSimpleImages([word[:, snap:snap + window_size]])
     return images
+
 
 def get_sliding_words(words_in_lines, window_size, shift):
     sliding_words_in_line = []
@@ -27,6 +28,7 @@ def getComponentClusters(num_labels, labels):
     del clusters[0]
     return clusters
 
+
 def getBoundingBoxBoundaries(image, clusters):
     box_boundaries = []
     for idx, cluster in enumerate(clusters):
@@ -45,6 +47,7 @@ def getBoundingBoxBoundaries(image, clusters):
         box_boundaries.append([[y_max, y_min], [x_min, x_max]])
     return box_boundaries
 
+<<<<<<< HEAD
 def dialate_clusters(num_boxes, word):
     kernel = np.ones((4,2), np.uint8)
     word = cv2.dilate(word, kernel, iterations=1)
@@ -57,14 +60,26 @@ def dialate_clusters(num_boxes, word):
         
             
 def get_box_images(box_boundaries, word):
+=======
+
+def character_segment(word, title=None):
+    word = word.astype(np.uint8)
+    # print("Running character segmentation...")
+    num_labels, labels = cv2.connectedComponents(word)
+    clusters = getComponentClusters(num_labels, labels)
+    box_boundaries = getBoundingBoxBoundaries(word, clusters)
+    # print(box_boundaries[0])
+>>>>>>> a51425a80ea0fd30f11842d179de8151f6d6ac2b
     box_images = []
+    box_areas = []
     for box in box_boundaries:
         y_min = box[0][0]
         y_max = box[0][1]
         x_min = box[1][0]
         x_max = box[1][1]
-        box_img = word[y_min:y_max,x_min:x_max]
+        box_img = word[y_min:y_max, x_min:x_max]
         box_images.append(box_img)
+<<<<<<< HEAD
     return box_images
 
 def character_segment(word):
@@ -85,3 +100,10 @@ def character_segment(word):
     # plotConnectedComponentBoundingBoxes(word, box_boundaries)
     print("Character segmentation complete.")
     return box_images, word
+=======
+        box_areas.append(abs(y_max-y_min)*abs(x_max-x_min))
+    plotConnectedComponentBoundingBoxes(word, box_boundaries, title=title)
+    # print("Character segmentation complete.")
+    return box_images, box_areas
+    # return box_images
+>>>>>>> a51425a80ea0fd30f11842d179de8151f6d6ac2b

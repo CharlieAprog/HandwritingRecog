@@ -158,7 +158,7 @@ def plotWordsInLine(line, words):
     plt.show()
 
 
-def plotGrid(images):
+def plotGrid(images, title=None):
     # distribute bottom row images
     bottom_images = images[2:]
     axes = []
@@ -188,8 +188,8 @@ def plotGrid(images):
             ax.imshow(images[idx])
         else:
             ax.plot(images[idx])
+    plt.title(title) if title else plt.title()
     plt.show()
-
 
 def plotConnectedComponentLabel(path):
     """
@@ -229,7 +229,7 @@ def plotConnectedComponentLabel(path):
     plt.show()
 
 
-def plotConnectedComponentBoundingBoxes(image, rectangle_boundaries):
+def plotConnectedComponentBoundingBoxes(image, rectangle_boundaries, title=None):
     plt.imshow(image, cmap="gray")
     ax = plt.gca()
     for idx, box in enumerate(rectangle_boundaries):
@@ -248,5 +248,5 @@ def plotConnectedComponentBoundingBoxes(image, rectangle_boundaries):
                       linewidth=1,
                       edgecolor='r',
                       facecolor='none'))
-    plt.title("Image with bounding boxes")
+    plt.title("Image with bounding boxes") if title is None else plt.title(f"Image with bounding boxes {title}")
     plt.show()
