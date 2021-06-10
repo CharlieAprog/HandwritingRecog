@@ -47,7 +47,6 @@ def getBoundingBoxBoundaries(image, clusters):
         box_boundaries.append([[y_max, y_min], [x_min, x_max]])
     return box_boundaries
 
-<<<<<<< HEAD
 def dialate_clusters(num_boxes, word):
     kernel = np.ones((4,2), np.uint8)
     word = cv2.dilate(word, kernel, iterations=1)
@@ -60,16 +59,6 @@ def dialate_clusters(num_boxes, word):
         
             
 def get_box_images(box_boundaries, word):
-=======
-
-def character_segment(word, title=None):
-    word = word.astype(np.uint8)
-    # print("Running character segmentation...")
-    num_labels, labels = cv2.connectedComponents(word)
-    clusters = getComponentClusters(num_labels, labels)
-    box_boundaries = getBoundingBoxBoundaries(word, clusters)
-    # print(box_boundaries[0])
->>>>>>> a51425a80ea0fd30f11842d179de8151f6d6ac2b
     box_images = []
     box_areas = []
     for box in box_boundaries:
@@ -78,11 +67,11 @@ def character_segment(word, title=None):
         x_min = box[1][0]
         x_max = box[1][1]
         box_img = word[y_min:y_max, x_min:x_max]
+        box_areas.append(abs(y_max-y_min)*abs(x_max-x_min))
         box_images.append(box_img)
-<<<<<<< HEAD
-    return box_images
+    return box_images, box_areas
 
-def character_segment(word):
+def character_segment(word, title = None):
     cluster_threshold = 7
     word = word.astype(np.uint8)
     print("Running character segmentation...")
@@ -96,14 +85,7 @@ def character_segment(word):
         box_boundaries, word = dialate_clusters(num_boxes, word)
         num_boxes = len(box_boundaries)
         print(num_boxes)
-    box_images = get_box_images(box_boundaries, word)
-    # plotConnectedComponentBoundingBoxes(word, box_boundaries)
+    box_images, box_areas = get_box_images(box_boundaries, word)
+    # plotConnectedComponentBoundingBoxes(word, box_boundaries, title = title)
     print("Character segmentation complete.")
-    return box_images, word
-=======
-        box_areas.append(abs(y_max-y_min)*abs(x_max-x_min))
-    plotConnectedComponentBoundingBoxes(word, box_boundaries, title=title)
-    # print("Character segmentation complete.")
-    return box_images, box_areas
-    # return box_images
->>>>>>> a51425a80ea0fd30f11842d179de8151f6d6ac2b
+    return box_images,box_areas, word

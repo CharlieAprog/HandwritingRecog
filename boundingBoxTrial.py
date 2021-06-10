@@ -24,15 +24,31 @@ lines, words_in_lines = text_segment(image_num)
 # Get all characters from all words
 segmented_word_box_images = []
 segmented_word_box_areas = []
-for line in words_in_lines:
+characters = []
+character_widths = []
+for line_idx, line in enumerate(words_in_lines):
     line_word_images = []
     line_word_areas = []
-    for word in line:
-        pixels, areas = character_segment(word, title="[OLD]")
+    for word_idx, word in enumerate(line):
+        pixels, areas, new_word = character_segment(word, title="[OLD]")
+        words_in_lines[line_idx][word_idx] = new_word
         line_word_images.append(pixels)
         line_word_areas.append(areas)
+        for character in pixels:
+            if character.size > 0:
+                characters.append(character)
+                character_widths.append(len(character[0,:]))
     segmented_word_box_images.append(line_word_images)
     segmented_word_box_areas.append(line_word_areas)
+mean_character_width = np.mean(character_widths)
+
+# identify long characters
+
+# for char_idx in range(len(characters)):
+#     if character_widths[char_idx] > mean_character_width + np.std(character_widths):
+#         print(characters[char_idx])
+#         plotSimpleImages([characters[char_idx]])
+
 
 # Filter nonsense artifacts
 area_thr = lambda img, x: [x for x in img if x > 500]
@@ -49,7 +65,7 @@ filtered_word_box_images_all_lines = [
     ]
     for i, line in enumerate(segmented_word_box_images)
 ]
-filtered_word_box_images_all_lines = [[word[0] for word in line if word != []] for line in filtered_word_box_images_all_lines]
+filtered_word_box_images_all_lines = [[word for word in line if word != []] for line in filtered_word_box_images_all_lines]
 
 
 # |-----------------------------------------------------|
@@ -58,7 +74,6 @@ filtered_word_box_images_all_lines = [[word[0] for word in line if word != []] f
 sliding_words = get_sliding_words(filtered_word_box_images_all_lines, window_size, shift)
 label, prob_bounding_box = get_label_probability(filtered_word_box_images_all_lines[0][1], model)
 print(label, prob_bounding_box)
-plotSimpleImages(sliding_words[0][0])
 
 for slide in sliding_words[0][0]:
     slide = slide.astype(np.uint8)
@@ -66,26 +81,22 @@ for slide in sliding_words[0][0]:
 
 
 lines, words_in_lines = text_segment(image_num) 
-<<<<<<< HEAD
 # sliding_words = get_sliding_words(words_in_lines,window_size, shift)
-plotSimpleImages(lines)
-character_widths = []
-characters = []
-for line_idx in range(len(words_in_lines)):
-    for word_idx in range(len(words_in_lines[line_idx])):
-        word_image = words_in_lines[line_idx][word_idx]
-        word_box_images, new_word_image = character_segment(word_image) # list of numpy array (images)
-        words_in_lines[line_idx][word_idx] = new_word_image
-        for character in word_box_images:
-            if character.size > 0:
-                characters.append(character)
-                character_widths.append(len(character[0,:]))
-mean_character_width = np.mean(character_widths)
+# plotSimpleImages(lines)
+# character_widths = []
+# characters = []
+# for line_idx in range(len(words_in_lines)):
+#     for word_idx in range(len(words_in_lines[line_idx])):
+#         word_image = words_in_lines[line_idx][word_idx]
+#         word_box_images, new_word_image = character_segment(word_image) # list of numpy array (images)
+#         words_in_lines[line_idx][word_idx] = new_word_image
+#         for character in word_box_images:
+#             if character.size > 0:
+#                 characters.append(character)
+#                 character_widths.append(len(character[0,:]))
+# mean_character_width = np.mean(character_widths)
 
-for char_idx in range(len(characters)):
-    if character_widths[char_idx] > mean_character_width + np.std(character_widths):
-        print(characters[char_idx])
-        plotSimpleImages([characters[char_idx]])
+
 
 
 # plotSimpleImages(lines)
@@ -112,10 +123,6 @@ for char_idx in range(len(characters)):
 #     images = slide_over_word(img, 30, 10)
 #     plotSimpleImages(images)
 # plotSimpleImages(word_box_images)
-=======
-sliding_words = get_sliding_words(words_in_lines,window_size, shift)
-word_box_images = character_segment(words_in_lines[1][2]) # list of numpy array (images)
->>>>>>> a51425a80ea0fd30f11842d179de8151f6d6ac2b
 
 all_words = [word for line in words_in_lines for word in line]
 print(all_words[0])
