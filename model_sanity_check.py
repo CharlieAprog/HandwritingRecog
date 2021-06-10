@@ -12,24 +12,21 @@ class ThresholdTransform(object):
 
   def __call__(self, x):
     return (x < self.thr).to(x.dtype)  # do not change the data type
+
 bin_transform = transforms.Compose([
     transforms.ToTensor(),
     ThresholdTransform(thr_255=250)
 ])
+
 for img_name in val_data:
     folders = img_name.split('/')
     label = folders[9]
-    print(label)
     label_idx = name2idx[label]
     _, img = boundingboxcrop(img_name)
     #print(img)
     if img != []:
-        img = resize_pad(img, 40, 40)
-        img = bin_transform(img)
-        img = torch.reshape(img, [1,1,40,40])
-        #print(img[0][0])
-        out = model(img)
-        pred_label = torch.argmax(out).detach().numpy()
+        img = bin_transform(img).numpy()
+        pred_label, prob = get_label_probability(img[0], model)
 
         if pred_label == label_idx:
             cor += 1

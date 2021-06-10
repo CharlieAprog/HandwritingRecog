@@ -61,7 +61,7 @@ def resize_pad(img, height_all, width_all):
         right_pad = left_pad
         if left_pad + right_pad + new_width != 40:
             right_pad += 1
-        resized_pad_img = cv2.copyMakeBorder(resized_img, 0, 0, left_pad, right_pad, cv2.BORDER_CONSTANT, value=255)
+        resized_pad_img = cv2.copyMakeBorder(resized_img, 0, 0, left_pad, right_pad, cv2.BORDER_CONSTANT, value=0)
     else:
         resize_factor = height_all / height
         new_height = int(img.shape[0] * resize_factor)
@@ -71,7 +71,7 @@ def resize_pad(img, height_all, width_all):
         bottom_pad = top_pad
         if top_pad + bottom_pad + new_height != 40:
             bottom_pad += 1
-        resized_pad_img = cv2.copyMakeBorder(resized_img, top_pad, bottom_pad, 0, 0, cv2.BORDER_CONSTANT,value = 255)
+        resized_pad_img = cv2.copyMakeBorder(resized_img, top_pad, bottom_pad, 0, 0, cv2.BORDER_CONSTANT,value = 0)
 
     return resized_pad_img
 
@@ -79,10 +79,22 @@ def resize_pad(img, height_all, width_all):
 # feeds it to the model and returns the label_idx and the probability of the label_idx
 # could use the probability to tell if an img is a char I guess
 def get_label_probability(img, model):
+    # debug stuff
+    # print("img before resizing")
+    # print(img)
+    # print(np.max(img), np.min(img))
+    # print("-------------")
     img = resize_pad(img, 40, 40)
     # make img ready for model
     img_res = np.reshape(img, [1, 1, 40, 40])
     img_torch = torch.Tensor(img_res)
+    # debug stuff
+    # print("Tensor before model......")
+    # print(img_torch)
+    # print("------------------")
+    # print("max val")
+    # print(torch.max(img_torch))
+    # print("min val", torch.min(img_torch))
     out = model(img_torch)
     pred_label = torch.argmax(out).detach().numpy()
     out = out.detach().numpy()
@@ -90,22 +102,7 @@ def get_label_probability(img, model):
     char_probs = np.exp(out) / (np.exp(out)).sum()
 
     return pred_label, char_probs[0][pred_label]
-    # some way of telling if an img is a char I tried but doesnt work
-    # commented for now
-    # max_idx = char_probs[0].argsort()[-4:][::-1]
-    # # now check if the max_3 probs are close to each other
-    # # distance between 2nd highest and highest prob
-    # dist1 = abs(char_probs[0][max_idx[1]] - char_probs[0][max_idx[0]])
-    # # distance between 2nd highest and 3rd highest prob
-    # dist2 = abs(char_probs[0][max_idx[1]] - char_probs[0][max_idx[2]])
-    # # distance between 2nd highest and 3rd highest prob
-    # dist3 = abs(char_probs[0][max_idx[2]] - char_probs[0][max_idx[3]])
-    # if dist1 < 0.3 and dist2 < 0.2 and dist3 < 0.1:
-    #     print(char_probs[0][max_idx[0]])
-    #     print(dist1, dist2)
-    #     return False
-    # else:
-    #     return True
+
 # two dicts one from label names to idx
 name2idx = {'Alef': 0, 'Ayin': 1, 'Bet': 2, 'Dalet': 3, 'Gimel' : 4, 'He': 5,
             'Het': 6, 'Kaf': 7, 'Kaf-final': 8, 'Lamed': 9, 'Mem': 10,
@@ -121,7 +118,16 @@ model.load_model(model.load_checkpoint('40_char_rec.ckpt', map_location=torch.de
 
 
 
+class ThresholdTransform(object):
+  def __init__(self, thr_255):
+    self.thr = thr_255 / 255.  # input threshold for [0..255] gray level, convert to [0..1]
 
+  def __call__(self, x):
+    return (x < self.thr).to(x.dtype)  # do not change the data type
+bin_transform = transforms.Compose([
+    transforms.ToTensor(),
+    ThresholdTransform(thr_255=250)
+])
 
 
 

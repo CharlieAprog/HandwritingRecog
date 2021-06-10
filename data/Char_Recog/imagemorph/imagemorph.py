@@ -136,7 +136,7 @@ def morph(folder_path, label_to_morph, morph_times, new_folder=False):
     cnt = 0
     # path to where the morphed images are saved, each char will get its own folder
     path = '/home/jan/PycharmProjects/HandwritingRecog/data/characters_for_style_classification_balance_morph/Herodian'
-    #os.chdir(path)
+
     folders = image_names[0].split('/')
     prev_label = folders[8]
     for i in range(0, morph_times):
