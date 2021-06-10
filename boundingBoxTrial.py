@@ -4,7 +4,7 @@ import copy
 from Text_Segmentation.plotting import plotSimpleImages, plotGrid
 from Text_Segmentation.lineSegmentation import calc_outlier
 from Text_Segmentation.plotting import plotSimpleImages
-from Text_Segmentation.characterSegmentation import character_segment, get_sliding_words, slide_over_word
+from Text_Segmentation.characterSegmentation import character_segment, get_sliding_words, slide_over_word, filter_characters, run_character_segment
 from Text_Segmentation.textSegmentation import text_segment
 from Text_Segmentation import *
 from segmentation_to_recog import *
@@ -15,79 +15,38 @@ shift = 60
 #lines = the images of each line of an image
 #words_in_lines = each word in each line of image,
 #sliding_words = sliding window of each of these words
+#TODO   - make bounding boxes have top and bottom of line instead of max and min of conected component
+#       - remove any recognised bounding boxes that are inside of a larger bonding box
+#       - obtain remaining images of suspected instances where there are multiple characters
+#       - on these suspected multi characters, run sliding window and obtain n images
+#       - run CNN on these n images and predict the label and mark the highest certainty region
+#       - (hopefully do not have to implement ngrams)
+#       - save the regions of the highest certainty predictions to the words in line function
+#       - create list of predictions of all resulting characters and pass for each character the character and the predicted label to style recogniser
+#       --> recognise style
 
 # |-----------------------------------------------------|
 # |              CHARACTER FILTERING                    |
 # |-----------------------------------------------------|
 lines, words_in_lines = text_segment(image_num)
 # Get all characters from all words
-segmented_word_box_images = []
-segmented_word_box_areas = []
-characters = []
-character_widths = []
-for line_idx, line in enumerate(words_in_lines):
-    line_word_images = []
-    line_word_areas = []
-    for word_idx, word in enumerate(line):
-        pixels, areas, new_word = character_segment(word, title="[OLD]")
-        words_in_lines[line_idx][word_idx] = new_word
-        line_word_images.append(pixels)
-        line_word_areas.append(areas)
-        for character in pixels:
-            if character.size > 0:
-                characters.append(character)
-                character_widths.append(len(character[0,:]))
-    segmented_word_box_images.append(line_word_images)
-    segmented_word_box_areas.append(line_word_areas)
-mean_character_width = np.mean(character_widths)
+segmented_word_box_images, segmented_word_box_areas, all_characters, character_widths = run_character_segment(words_in_lines)
+filtered_word_box_images_all_lines = filter_characters(segmented_word_box_areas, segmented_word_box_images)
 
 # identify long characters
-
+# mean_character_width = np.mean(character_widths)
 # for char_idx in range(len(characters)):
 #     if character_widths[char_idx] > mean_character_width + np.std(character_widths):
 #         print(characters[char_idx])
 #         plotSimpleImages([characters[char_idx]])
 
 
-# Filter nonsense artifacts
-area_thr = lambda img, x: [x for x in img if x > 500]
-boxes_thr = [[area_thr(image, len(image)) for image in line if area_thr(image, len(image)) != []] for line in segmented_word_box_areas]
-flat_boxes_thr = list(itertools.chain(*list(itertools.chain(*boxes_thr))))
-
-# Filter artifacts that are still small, but large enough to be mistaken for words, where filtering is based on
-# the average word size of the current document
-outlier_thr = calc_outlier(flat_boxes_thr)
-filtered_word_box_images_all_lines = [
-    [
-        [cluster for k, cluster in enumerate(pixel_clusters) if segmented_word_box_areas[i][j][k] >= outlier_thr]
-        for j, pixel_clusters in enumerate(line) if pixel_clusters != []
-    ]
-    for i, line in enumerate(segmented_word_box_images)
-]
-
-lines_words_char_images = []
-for line in filtered_word_box_images_all_lines:
-    line_imgs = []
-    for word in line:
-        if word != []:
-            line_imgs.append(word)
-    lines_words_char_images.append(line_imgs)
-
-# filtered_word_box_images_all_lines = [[word for word in line if word != []] for line in filtered_word_box_images_all_lines]
-
 for i in range(3):
     print(f"Line {i}")
     plotSimpleImages(words_in_lines[i], title="OLD")
     for j in range(len(filtered_word_box_images_all_lines[i])):
         plotSimpleImages(filtered_word_box_images_all_lines[i][j], title="NEW")
-#
-# for i, line in enumerate(filtered_word_box_images_all_lines):
-#     for j, word in enumerate(line):
-#         plt.figure(figsize=(10, 6))
-#         plt.imshow(word, cmap="gray")
-#         plt.title(f"Line: {j}, word: {j}")
-#         plt.show()
-#         plt.close()
+        
 
 # |-----------------------------------------------------|
 # |              CHARACTER RECOGNITION                  |
