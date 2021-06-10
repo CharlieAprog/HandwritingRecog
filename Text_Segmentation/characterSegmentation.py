@@ -45,13 +45,18 @@ def getBoundingBoxBoundaries(image, clusters):
         box_boundaries.append([[y_max, y_min], [x_min, x_max]])
     return box_boundaries
 
-def character_segment(word):
-    word = word.astype(np.uint8)
-    print("Running character segmentation...")
+def dialate_clusters(num_boxes, word):
+    kernel = np.ones((4,2), np.uint8)
+    word = cv2.dilate(word, kernel, iterations=1)
     num_labels, labels = cv2.connectedComponents(word)
     clusters = getComponentClusters(num_labels, labels)
     box_boundaries = getBoundingBoxBoundaries(word, clusters)
-    print(box_boundaries[0])
+    
+    #plotConnectedComponentBoundingBoxes(word, box_boundaries)
+    return box_boundaries, word
+        
+            
+def get_box_images(box_boundaries, word):
     box_images = []
     for box in box_boundaries:
         y_min = box[0][0]
@@ -60,6 +65,23 @@ def character_segment(word):
         x_max = box[1][1]
         box_img = word[y_min:y_max,x_min:x_max]
         box_images.append(box_img)
-    plotConnectedComponentBoundingBoxes(word, box_boundaries)
-    print("Character segmentation complete.")
     return box_images
+
+def character_segment(word):
+    cluster_threshold = 7
+    word = word.astype(np.uint8)
+    print("Running character segmentation...")
+
+
+    num_labels, labels = cv2.connectedComponents(word)
+    clusters = getComponentClusters(num_labels, labels)
+    box_boundaries = getBoundingBoxBoundaries(word, clusters)
+    num_boxes = len(box_boundaries)
+    while num_boxes > cluster_threshold:
+        box_boundaries, word = dialate_clusters(num_boxes, word)
+        num_boxes = len(box_boundaries)
+        print(num_boxes)
+    box_images = get_box_images(box_boundaries, word)
+    # plotConnectedComponentBoundingBoxes(word, box_boundaries)
+    print("Character segmentation complete.")
+    return box_images, word
