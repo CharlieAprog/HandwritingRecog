@@ -147,7 +147,7 @@ def plotSimpleImages(image_list, title=None):
             ax[index].imshow(image, cmap="gray")
         else:
             ax.imshow(image, cmap="gray")
-    plt.title(title) if title else plt.title()
+    plt.title(title) if title else plt.title('')
     plt.show()
 
 

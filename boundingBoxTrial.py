@@ -10,8 +10,7 @@ from Text_Segmentation import *
 from segmentation_to_recog import *
 
 image_num = 18
-window_size = 100
-shift = 60
+
 #lines = the images of each line of an image
 #words_in_lines = each word in each line of image,
 #sliding_words = sliding window of each of these words
@@ -30,8 +29,8 @@ shift = 60
 # |-----------------------------------------------------|
 lines, words_in_lines = text_segment(image_num)
 # Get all characters from all words
-segmented_word_box_images, segmented_word_box_areas, all_characters, character_widths = run_character_segment(words_in_lines)
-filtered_word_box_images_all_lines = filter_characters(segmented_word_box_areas, segmented_word_box_images)
+# segmented_word_box_images, segmented_word_box_areas, all_characters, character_widths = run_character_segment(words_in_lines)
+# filtered_word_box_images_all_lines = filter_characters(segmented_word_box_areas, segmented_word_box_images)
 
 # identify long characters
 # mean_character_width = np.mean(character_widths)
@@ -41,23 +40,30 @@ filtered_word_box_images_all_lines = filter_characters(segmented_word_box_areas,
 #         plotSimpleImages([characters[char_idx]])
 
 
-for i in range(3):
-    print(f"Line {i}")
-    plotSimpleImages(words_in_lines[i], title="OLD")
-    for j in range(len(filtered_word_box_images_all_lines[i])):
-        plotSimpleImages(filtered_word_box_images_all_lines[i][j], title="NEW")
+# for i in range(3):
+#     print(f"Line {i}")
+#     plotSimpleImages(words_in_lines[i], title="OLD")
+#     for j in range(len(filtered_word_box_images_all_lines[i])):
+#         plotSimpleImages(filtered_word_box_images_all_lines[i][j], title="NEW")
         
 
 # |-----------------------------------------------------|
 # |              CHARACTER RECOGNITION                  |
 # |-----------------------------------------------------|
-sliding_words = get_sliding_words(filtered_word_box_images_all_lines, window_size, shift)
-label, prob_bounding_box = get_label_probability(filtered_word_box_images_all_lines[0][1], model)
-print(label, prob_bounding_box)
+window_size = 100
+shift = 1
+sliding_words = get_sliding_words(words_in_lines, window_size, shift)
+# label, prob_bounding_box = get_label_probability(words_in_lines[0][1], model)
+# print(label, prob_bounding_box)
 
-for slide in sliding_words[0][0]:
-    slide = slide.astype(np.uint8)
-    label, prob_bounding_box = get_label_probability(slide, model)
+for i, line in enumerate(sliding_words):
+    for j, word in enumerate(line):
+        for slide in word:
+            slide = slide.astype(np.uint8)
+            label, prob_bounding_box = get_label_probability(slide, model)
+            print(label, prob_bounding_box)
+        plotSimpleImages(word)
+exit()
 
 
 lines, words_in_lines = text_segment(image_num) 
