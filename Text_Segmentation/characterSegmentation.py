@@ -65,7 +65,7 @@ def character_segment(word, title=None):
         box_img = word[y_min:y_max, x_min:x_max]
         box_images.append(box_img)
         box_areas.append(abs(y_max-y_min)*abs(x_max-x_min))
-    plotConnectedComponentBoundingBoxes(word, box_boundaries, title=title)
+    # plotConnectedComponentBoundingBoxes(word, box_boundaries, title=title)
     # print("Character segmentation complete.")
     return box_images, box_areas
     # return box_images

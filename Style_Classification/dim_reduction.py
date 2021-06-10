@@ -3,9 +3,9 @@ import glob
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.datasets import load_digits
 from sklearn.decomposition import PCA
 from typing import Union
+from minisom import MiniSom
 
 
 def get_style_char_images(style_path: str, character: str):
@@ -17,7 +17,7 @@ def get_style_char_images(style_path: str, character: str):
     return img_list
 
 
-style_base_path = '../data/characters_for_style_classification/'
+style_base_path = './data/characters_for_style_classification_balance_morph/'
 style_archaic_path = style_base_path + 'Archaic/'
 style_hasmonean_path = style_base_path + 'Hasmonean/'
 style_herodian_path = style_base_path + 'Herodian/'
@@ -43,21 +43,93 @@ herodian_imgs = {char:
                  [cv2.resize(img, new_size).flatten() for img in get_style_char_images(style_herodian_path, char)]
                  for char in herodian_characters}
 
-pca = PCA(2)
-# TODO: Augment the images for each character in each style so that we have at least enough to prevent PCA from running
+
+# |-----------------------------------------------|
+# |                  PCA                          |
+# |-----------------------------------------------|
+pca = PCA(3)
 # into too few instances which leads to insufficient components
-pca_archaic_imgs = {char: pca.fit_transform(archaic_imgs[char]) for char in archaic_imgs.keys()}
+# pca_archaic_imgs = {char: pca.fit_transform(archaic_imgs[char]) for char in archaic_imgs.keys()}
 pca_hasmonean_imgs = {char: pca.fit_transform(hasmonean_imgs[char]) for char in hasmonean_imgs.keys()}
 pca_herodian_imgs = {char: pca.fit_transform(herodian_imgs[char]) for char in herodian_imgs.keys()}
 
 
+# hasmonean_features_taw = pca_hasmonean_imgs["Taw"]
+# hasmonean_features_kaf = pca_hasmonean_imgs["Kaf"]
+# hasmonean_features_alef = pca_hasmonean_imgs["Alef"]
+#
+# herodian_features_taw = pca_herodian_imgs["Taw"]
+# herodian_features_kaf = pca_herodian_imgs["Kaf"]
+# herodian_features_alef = pca_herodian_imgs["Alef"]
 
+# 2D
+# hasmonean_features_taw = pca_hasmonean_imgs["Taw"] + [3000, 3000]
+# hasmonean_features_kaf = pca_hasmonean_imgs["Kaf"] + [-3000, 0]
+# hasmonean_features_alef = pca_hasmonean_imgs["Alef"] + [3000, -3000]
+#
+# herodian_features_taw = pca_herodian_imgs["Taw"] + [3000, 3000]
+# herodian_features_kaf = pca_herodian_imgs["Kaf"] + [-3000, 0]
+# herodian_features_alef = pca_herodian_imgs["Alef"] + [3000, -3000]
 
-# plt.style.use('seaborn-whitegrid')
-# plt.figure(figsize=(10, 6))
-# color_map = plt.cm.get_cmap('jet', 10)
-# plt.scatter(converted_data[:, 0], converted_data[:, 1], s=15,
-#             cmap=color_map, c=digits.target)
-# plt.colorbar()
-# plt.xlabel('PC-1'), plt.ylabel('PC-2')
-# plt.show()
+# 3D
+hasmonean_features_taw = pca_hasmonean_imgs["Taw"] + [3000, 3000, 3000]
+hasmonean_features_kaf = pca_hasmonean_imgs["Kaf"] + [-3000, 0, 0]
+hasmonean_features_alef = pca_hasmonean_imgs["Alef"] + [3000, -3000, -3000]
+
+herodian_features_taw = pca_herodian_imgs["Taw"] + [3000, 3000, 3000]
+herodian_features_kaf = pca_herodian_imgs["Kaf"] + [-3000, 0, 0]
+herodian_features_alef = pca_herodian_imgs["Alef"] + [3000, -3000, -3000]
+
+plt.style.use('seaborn-whitegrid')
+fig = plt.figure(figsize=(10, 6))
+ax = fig.add_subplot(projection='3d')
+# ax = fig.add_subplot()
+color_map = plt.cm.get_cmap('jet', 10)
+
+# # Green1
+# ax.scatter(hasmonean_features_taw[:, 0], hasmonean_features_taw[:, 1], s=15,
+#             cmap=color_map, c="#69D968")
+# # Blue1
+# ax.scatter(hasmonean_features_kaf[:, 0], hasmonean_features_kaf[:, 1], s=15,
+#             cmap=color_map, c="#A291CE")
+# # Yellow1
+# ax.scatter(hasmonean_features_alef[:, 0], hasmonean_features_alef[:, 1], s=15,
+#             cmap=color_map, c="#FDE551")
+#
+# # Green2
+# ax.scatter(herodian_features_taw[:, 0], herodian_features_taw[:, 1], s=15,
+#             cmap=color_map, c="#91CEC8")
+# # Blue2
+# ax.scatter(herodian_features_kaf[:, 0], herodian_features_kaf[:, 1], s=15,
+#             cmap=color_map, c="#0550D2")
+# # Yellow2
+# ax.scatter(herodian_features_alef[:, 0], herodian_features_alef[:, 1], s=15,
+#             cmap=color_map, c="#FDA051")
+
+# Green1
+ax.scatter(hasmonean_features_taw[:, 0], hasmonean_features_taw[:, 1], hasmonean_features_taw[:, 2], s=15,
+            cmap=color_map, c="#69D968")
+# Green2
+ax.scatter(herodian_features_taw[:, 0], herodian_features_taw[:, 1], herodian_features_taw[:, 2], s=15,
+            cmap=color_map, c="#91CEC8")
+
+# Blue1
+ax.scatter(hasmonean_features_kaf[:, 0], hasmonean_features_kaf[:, 1], hasmonean_features_kaf[:, 2], s=15,
+            cmap=color_map, c="#A291CE")
+# Blue2
+ax.scatter(herodian_features_kaf[:, 0], herodian_features_kaf[:, 1], herodian_features_kaf[:, 2], s=15,
+            cmap=color_map, c="#0550D2")
+
+# Yellow1
+ax.scatter(hasmonean_features_alef[:, 0], hasmonean_features_alef[:, 1], hasmonean_features_alef[:, 2], s=15,
+            cmap=color_map, c="#FDE551")
+# Yellow2
+ax.scatter(herodian_features_alef[:, 0], herodian_features_alef[:, 1], herodian_features_alef[:, 2], s=15,
+            cmap=color_map, c="#FDA051")
+
+ax.set_xlabel('PC-1')
+ax.set_ylabel('PC-2')
+ax.set_zlabel('PC-3') if pca.n_components == 3 else None
+plt.legend(["Taw (hasmonean)", "Taw (herodian)", "Kaf (hasmonean)", "Kaf (herodian)", "Alef (hasmonean)", "Alef (herodian)"],
+           loc="best")
+plt.show()

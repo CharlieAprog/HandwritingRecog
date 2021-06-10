@@ -140,13 +140,14 @@ def plotHoughTransform(hspace,
     plt.tight_layout()
 
 
-def plotSimpleImages(image_list):
+def plotSimpleImages(image_list, title=None):
     fig, ax = plt.subplots(nrows=len(image_list), figsize=(5, 6))
     for index, image in enumerate(image_list):
         if len(image_list) > 1:
             ax[index].imshow(image, cmap="gray")
         else:
             ax.imshow(image, cmap="gray")
+    plt.title(title) if title else plt.title()
     plt.show()
 
 
@@ -248,5 +249,4 @@ def plotConnectedComponentBoundingBoxes(image, rectangle_boundaries, title=None)
                       linewidth=1,
                       edgecolor='r',
                       facecolor='none'))
-    plt.title("Image with bounding boxes") if title is None else plt.title(f"Image with bounding boxes {title}")
     plt.show()
