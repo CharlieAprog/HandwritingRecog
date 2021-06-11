@@ -14,15 +14,15 @@ image_num = 18
 #lines = the images of each line of an image
 #words_in_lines = each word in each line of image,
 #sliding_words = sliding window of each of these words
-#TODO   - make bounding boxes have top and bottom of line instead of max and min of conected component
-#       - remove any recognised bounding boxes that are inside of a larger bonding box
-#       - obtain remaining images of suspected instances where there are multiple characters
-#       - on these suspected multi characters, run sliding window and obtain n images
-#       - run CNN on these n images and predict the label and mark the highest certainty region
-#       - (hopefully do not have to implement ngrams)
-#       - save the regions of the highest certainty predictions to the words in line function
-#       - create list of predictions of all resulting characters and pass for each character the character and the predicted label to style recogniser
-#       --> recognise style
+#TODO   -a make bounding boxes have top and bottom of line instead of max and min of conected component
+#       -b remove any recognised bounding boxes that are inside of a larger bonding box
+#       -c obtain remaining images of suspected instances where there are multiple characters
+#       -d on these suspected multi characters, run sliding window and obtain n images
+#       -e run CNN on these n images and predict the label and mark the highest certainty region
+#       -f (hopefully do not have to implement ngrams)
+#       -g save the regions of the highest certainty predictions to the words in line function
+#       -h create list of predictions of all resulting characters and pass for each character the character and the predicted label to style recogniser
+#       -i --> recognise style
 
 # |-----------------------------------------------------|
 # |              CHARACTER FILTERING                    |
