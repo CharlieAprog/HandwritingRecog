@@ -60,6 +60,7 @@ def dialate_clusters(num_boxes, word):
         
             
 def get_box_images(box_boundaries, word):
+    """Returns all the bounded images and areas thereof within a word that can contain any number of characters"""
     box_images = []
     box_areas = []
     for box in box_boundaries:
@@ -73,7 +74,7 @@ def get_box_images(box_boundaries, word):
     return box_images, box_areas
 
 
-def character_segment(word, title = None):
+def character_segment(word, title=None):
     cluster_threshold = 7
     word = word.astype(np.uint8)
     print("Running character segmentation...")
@@ -88,19 +89,26 @@ def character_segment(word, title = None):
     box_images, box_areas = get_box_images(box_boundaries, word)
     # plotConnectedComponentBoundingBoxes(word, box_boundaries, title = title)
     print("Character segmentation complete.")
-    return box_images,box_areas, word
+    return box_images, box_areas, word
 
 
 def filter_characters(segmented_word_box_areas, segmented_word_box_images):
-    # Filter nonsense artifacts
-    area_thr = lambda img, x: [x for x in img if x > 500]
-    boxes_thr = [[area_thr(image, len(image)) for image in line if area_thr(image, len(image)) != []] for line in segmented_word_box_areas]
+    """
+    Returns those images that are supposedly not artifacts.
+    """
+    # Empirically observed values
+    min_area = 500
+    max_area = 8000  # anything above 8000 is undoubtedly more than 1 character in any test image
+
+    area_thr = lambda img, x: [x for x in img if x > min_area and x < max_area]
+    boxes_thr = [[area_thr(image, None) for image in line if area_thr(image, None) != []] for line in
+                 segmented_word_box_areas]
     flat_boxes_thr = list(itertools.chain(*list(itertools.chain(*boxes_thr))))
 
     # Filter artifacts that are still small, but large enough to be mistaken for words, where filtering is based on
     # the average word size of the current document
     outlier_thr = calc_outlier(flat_boxes_thr)
-    filtered_word_box_images_all_lines = [
+    filtered_word_box_images = [
         [
             [cluster for k, cluster in enumerate(pixel_clusters) if segmented_word_box_areas[i][j][k] >= outlier_thr]
             for j, pixel_clusters in enumerate(line) if pixel_clusters != []
@@ -108,17 +116,18 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images):
         for i, line in enumerate(segmented_word_box_images)
     ]
 
-    # filtered_word_box_images_all_lines = [[word for word in line if word != []] for line in filtered_word_box_images_all_lines]
+    # filtered_word_box_images = [[word for word in line if word != []] for line in filtered_word_box_images]
 
     lines_words_char_images = []
-    for line in filtered_word_box_images_all_lines:
+    for line in filtered_word_box_images:
         line_imgs = []
         for word in line:
             if word != []:
                 line_imgs.append(word)
         lines_words_char_images.append(line_imgs)
-    
+
     return lines_words_char_images
+
 
 def run_character_segment(words_in_lines):
     segmented_word_box_images = []
@@ -139,4 +148,4 @@ def run_character_segment(words_in_lines):
                     character_widths.append(len(character[0,:]))
         segmented_word_box_images.append(line_word_images)
         segmented_word_box_areas.append(line_word_areas)
-    return  segmented_word_box_images, segmented_word_box_areas, all_characters, character_widths
+    return segmented_word_box_images, segmented_word_box_areas, all_characters, character_widths
