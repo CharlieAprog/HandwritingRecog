@@ -45,6 +45,10 @@ def getBoundingBoxBoundaries(image, clusters):
                 x_max = coordinate[1]
             elif coordinate[1] < x_min:
                 x_min = coordinate[1]
+        if x_max != image.shape[1]:
+            x_max += 1
+        if x_min != 0:
+            x_min -= 1
         box_boundaries.append([[y_max, y_min], [x_min, x_max]])
     return box_boundaries
 
@@ -126,6 +130,15 @@ def is_boundary_included(all_boundries, cluster):
             return True
     return False
 
+
+def is_image_border_active(character):
+    left_border = character[:, 0]
+    right_border = character[:, -1]
+    if len(np.nonzero(left_border)[0]) > 0 or len(np.nonzero(right_border)[0]) > 0:
+        return True
+    return False
+
+
 def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_box_boundaries, words_in_lines):
     """
     Returns those images that are supposedly not artifacts.
@@ -148,7 +161,7 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
         for j, word in enumerate(line):
             if word != []:
                 word_list = []
-                for k in range(len(word)):
+                for k, character in enumerate(word):
                     if segmented_word_box_areas[i][j][k] >= outlier_thr:
                         new_cluster = words_in_lines[i][j]
                         boundries = all_box_boundaries[i][j][k]
@@ -157,10 +170,27 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
                             x_max = boundries[1][1]
                             taller_cluster = new_cluster[:,x_min:x_max]
                             if taller_cluster != []:
-                                word_list.append(taller_cluster)
+                                if is_image_border_active(taller_cluster):
+                                    word_list.append(remove_character_artifacts(character))
+                                else:
+                                    word_list.append(remove_character_artifacts(taller_cluster))
                 if word_list != []:
                     line_list.append(word_list)
         if line_list != []:
             filtered_word_box_images.append(line_list)
 
     return filtered_word_box_images
+
+def remove_character_artifacts(image):
+    contours,_ = cv2.findContours(image, cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+    # Find object with the biggest bounding box
+    contours = contours[1:]
+    for cont in contours:
+        x, y, w, h = cv2.boundingRect(cont)
+        x_min = x
+        x_max = x + w
+        y_min = y
+        y_max = y + h
+        if x_min == 0 or x_max == image.shape[1]:
+            image[y_max:y_min,x_min:x_max] = 0
