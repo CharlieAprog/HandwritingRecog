@@ -89,10 +89,44 @@ def character_segment(word, title=None):
     box_images, box_areas = get_box_images(box_boundaries, word)
     # plotConnectedComponentBoundingBoxes(word, box_boundaries, title = title)
     print("Character segmentation complete.")
-    return box_images, box_areas, word
+    return box_images, box_areas, word, box_boundaries
 
+def run_character_segment(words_in_lines):
+    segmented_word_box_images = []
+    segmented_word_box_areas = []
+    all_characters = []
+    character_widths = []
+    all_box_boundaries = []
+    for line_idx, line in enumerate(words_in_lines):
+        line_word_images = []
+        line_word_areas = []
+        box_boundaries_lines = []
+        for word_idx, word in enumerate(line):
+            pixels, areas, new_word, box_boundaries = character_segment(word, title="[OLD]")
+            words_in_lines[line_idx][word_idx] = new_word
+            line_word_images.append(pixels)
+            line_word_areas.append(areas)
+            box_boundaries_lines.append(box_boundaries)
+            for character in pixels:
+                if character.size > 0:
+                    all_characters.append(character)
+                    character_widths.append(len(character[0,:]))
+        segmented_word_box_images.append(line_word_images)
+        segmented_word_box_areas.append(line_word_areas)
+        all_box_boundaries.append(box_boundaries_lines)
+    return segmented_word_box_images, segmented_word_box_areas, all_characters, character_widths, all_box_boundaries
 
-def filter_characters(segmented_word_box_areas, segmented_word_box_images):
+def is_boundary_included(all_boundries, cluster):
+    x_min_input = cluster[1][0]
+    x_max_input = cluster[1][1]
+    for idx, boundries in enumerate(all_boundries):
+        x_min_current = boundries[1][0]
+        x_max_current = boundries[1][1]
+        if x_min_input > x_min_current and x_max_input < x_max_current:
+            return True
+    return False
+
+def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_box_boundaries, words_in_lines):
     """
     Returns those images that are supposedly not artifacts.
     """
@@ -108,44 +142,25 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images):
     # Filter artifacts that are still small, but large enough to be mistaken for words, where filtering is based on
     # the average word size of the current document
     outlier_thr = calc_outlier(flat_boxes_thr)
-    filtered_word_box_images = [
-        [
-            [cluster for k, cluster in enumerate(pixel_clusters) if segmented_word_box_areas[i][j][k] >= outlier_thr]
-            for j, pixel_clusters in enumerate(line) if pixel_clusters != []
-        ]
-        for i, line in enumerate(segmented_word_box_images)
-    ]
-
-    # filtered_word_box_images = [[word for word in line if word != []] for line in filtered_word_box_images]
-
-    lines_words_char_images = []
-    for line in filtered_word_box_images:
-        line_imgs = []
-        for word in line:
+    filtered_word_box_images = []
+    for i, line in enumerate(segmented_word_box_images):
+        line_list = []
+        for j, word in enumerate(line):
             if word != []:
-                line_imgs.append(word)
-        lines_words_char_images.append(line_imgs)
+                word_list = []
+                for k in range(len(word)):
+                    if segmented_word_box_areas[i][j][k] >= outlier_thr:
+                        new_cluster = words_in_lines[i][j]
+                        boundries = all_box_boundaries[i][j][k]
+                        if not is_boundary_included(all_box_boundaries[i][j], boundries):
+                            x_min = boundries[1][0]
+                            x_max = boundries[1][1]
+                            taller_cluster = new_cluster[:,x_min:x_max]
+                            if taller_cluster != []:
+                                word_list.append(taller_cluster)
+                if word_list != []:
+                    line_list.append(word_list)
+        if line_list != []:
+            filtered_word_box_images.append(line_list)
 
-    return lines_words_char_images
-
-
-def run_character_segment(words_in_lines):
-    segmented_word_box_images = []
-    segmented_word_box_areas = []
-    all_characters = []
-    character_widths = []
-    for line_idx, line in enumerate(words_in_lines):
-        line_word_images = []
-        line_word_areas = []
-        for word_idx, word in enumerate(line):
-            pixels, areas, new_word = character_segment(word, title="[OLD]")
-            words_in_lines[line_idx][word_idx] = new_word
-            line_word_images.append(pixels)
-            line_word_areas.append(areas)
-            for character in pixels:
-                if character.size > 0:
-                    all_characters.append(character)
-                    character_widths.append(len(character[0,:]))
-        segmented_word_box_images.append(line_word_images)
-        segmented_word_box_areas.append(line_word_areas)
-    return segmented_word_box_images, segmented_word_box_areas, all_characters, character_widths
+    return filtered_word_box_images

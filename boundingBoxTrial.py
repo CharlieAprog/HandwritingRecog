@@ -9,13 +9,15 @@ from Text_Segmentation.textSegmentation import text_segment
 from Text_Segmentation import *
 from segmentation_to_recog import *
 
-image_num = 18
+image_num = 4
 
 #lines = the images of each line of an image
 #words_in_lines = each word in each line of image,
 #sliding_words = sliding window of each of these words
-#TODO   -a make bounding boxes have top and bottom of line instead of max and min of conected component
-#       -b remove any recognised bounding boxes that are inside of a larger bonding box
+#TODO   DONE -a make bounding boxes have top and bottom of line instead of max and min of conected component 
+#       DONE -b remove any recognised bounding boxes that are inside of a larger bonding box 
+#       -b.1 remove artifcats if they touch the boudries
+#       -b.2 trim characters
 #       -c obtain remaining images of suspected instances where there are multiple characters
 #       -d on these suspected multi characters, run sliding window and obtain n images
 #       -e run CNN on these n images and predict the label and mark the highest certainty region
@@ -29,8 +31,10 @@ image_num = 18
 # |-----------------------------------------------------|
 lines, words_in_lines = text_segment(image_num)
 # Get all characters from all words
-segmented_word_box_images, segmented_word_box_areas, all_characters, character_widths = run_character_segment(words_in_lines)
-filtered_word_box_images_all_lines = filter_characters(segmented_word_box_areas, segmented_word_box_images)
+segmented_word_box_images, segmented_word_box_areas, all_characters, character_widths, all_box_boundaries = run_character_segment(words_in_lines)
+filtered_word_box_images_all_lines = filter_characters(segmented_word_box_areas, segmented_word_box_images, all_box_boundaries, words_in_lines)
+
+
 
 # identify long characters
 # mean_character_width = np.mean(character_widths)

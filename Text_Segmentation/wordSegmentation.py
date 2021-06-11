@@ -21,6 +21,7 @@ def trim_line(line):
     thresh = threshold_otsu(line)
     line = line > thresh
     vertical_projection = np.sum(line, axis=0)
+    line_threshold = 15
     b1 = 0
     b2 = 0
     beginning = 0
@@ -31,20 +32,20 @@ def trim_line(line):
     for idx in range(len(vertical_projection)):
         if beginning == 0:
             if vertical_projection[idx] == 0:  # white
-                if b1 <= 10:
+                if b1 <= line_threshold:
                     temp1 = 0
                     b1 = 0
             elif vertical_projection[idx] != 0:  # black
                 if b1 == 0:  # start of black
                     temp1 = idx - 5 if idx - 5 > 0 else idx
-                if b1 > 10:
+                if b1 > line_threshold:
                     beginning = temp1
                 b1 += 1
 
         if end == 0:
             idx2 = len(vertical_projection) - (idx + 1)
             if vertical_projection[idx2] == 0:  # white
-                if b2 <= 10:
+                if b2 <= line_threshold:
                     temp2 = 0
                     b2 = 0
             elif vertical_projection[idx2] != 0:  # black
@@ -52,7 +53,7 @@ def trim_line(line):
                 if b2 == 0:  # start of black
                     temp2 = idx2 + 5 if idx + \
                         5 < len(vertical_projection) else idx2
-                if b2 > 10:
+                if b2 > line_threshold:
                     end = temp2
                 b2 += 1
 
