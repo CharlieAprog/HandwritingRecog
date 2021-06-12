@@ -29,6 +29,8 @@ def load_path(file_name):
     """ Loads a csv formatted path file into a numpy array. """
     return np.loadtxt(file_name, delimiter=',', dtype=int)
 
+def trim_360(image):
+    return trim_line(np.rot90(trim_line(np.rot90(image).astype(int)),axes=(1, 0)).astype(int))
 
 # |----------------------------------------------|
 # |    Global variables used by other files      |
@@ -119,7 +121,7 @@ def text_segment(image_num):
         
         for window in dividers:
             word = line[:, window[0]:window[1]]
-            trimmed_word = trim_line(np.rot90(trim_line(np.rot90(word).astype(int)),axes=(1, 0)).astype(int))
+            trimmed_word = trim_360(word)
             #plotSimpleImages(sliding_words[-1])
             words.append(trimmed_word)
         words_in_lines.append(words)

@@ -189,7 +189,7 @@ def plotGrid(images, title=None):
             ax.imshow(images[idx])
         else:
             ax.plot(images[idx])
-    plt.title(title) if title else plt.title()
+    plt.title(title) if title else plt.title(' ')
     plt.show()
 
 def plotConnectedComponentLabel(path):
