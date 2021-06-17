@@ -2,67 +2,75 @@ import math
 
 import cv2
 from dim_reduction import get_style_char_images
+from hinge_utils import *
 from segmentation_to_recog import resize_pad
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
 
 PI = 3.14159265359
-# def get_angle(x_low, y_low, x_up, y_up):
-#     dir_vector_x = x_up - x_low
-#     dir_vector_y = y_up - y_low
-#     y_inp = -dir_vector_x
-#     x_inp = dir_vector_y
-#     phi = math.atan2(y_inp, x_inp)
-#     return phi
-def get_angle(x_low, y_low, x_up, y_up):
-    val = (y_up - y_low) / (x_up-x_low)
-    phi = math.atan(val)
+
+def get_angle_small(x_origin, y_origin, x_up, y_up):
+    # avoid 0 division and set angle to 180 degress in that case
+    if (x_up - x_origin) == 0:
+        val = 100
+    else:
+        val = (y_up - y_origin) / (x_up - x_origin)
+    return math.atan(val)
+
+def get_angle(x_origin, y_origin, x_up, y_up):
+    # direction vector of one leg
+    delta_x = x_up - x_origin
+    delta_y = y_up - y_origin
+    # change of direction vector with horizontal vector
+    delta_x = delta_x - 1
+    phi = math.atan2(delta_y, delta_x)
     return phi
 
-def get_histogram(list_of_cont_cords, dist_between_points):
+def get_histogram(list_of_cont_cords, dist_between_points, img):
     histogram = []
     i = 0
     while i < (len(list_of_cont_cords) - (2*dist_between_points)):
+        # low hinge end point
         x_low = list_of_cont_cords[i][0]
         y_low = list_of_cont_cords[i][1]
-        x_center = list_of_cont_cords[i+dist_between_points][0]
-        y_center = list_of_cont_cords[i + dist_between_points][1]
+        # mid point
+        x_origin = list_of_cont_cords[i+dist_between_points][0]
+        y_origin = list_of_cont_cords[i+dist_between_points][1]
+        # 'upper' hinge end point
         x_high = list_of_cont_cords[i+(2*dist_between_points)][0]
-        y_high = list_of_cont_cords[i + (2 * dist_between_points)][1]
-        i += 1
-        # avoid rare 0 division
-        if (x_center - x_low) != 0:
-            # 'smaller' angle
-            phi1 = get_angle(x_low, y_low, x_center, y_center)
-            # rescale tp [0, pi]
-            phi1 += PI / 2
-        if (x_high - x_center) != 0:
-            # 'larger' angle
-            phi2 = get_angle(x_center, y_center, x_high, y_high)
-            # rescale to [0, 2pi]
-            phi2 += PI / 2
-            phi2 = 2*PI - phi2
+        y_high = list_of_cont_cords[i+(2*dist_between_points)][1]
+        i += dist_between_points
+        # check if cords work
+        # hinge_cords = [(x_low, y_low), (x_origin, y_origin), (x_high, y_high)]
+        # print(hinge_cords)
+        # for j in range(len(hinge_cords)):
+        #     img[hinge_cords[j]] = 100
+        # plt.imshow(img)
+        # plt.show()
+        # for x in range(len(hinge_cords)):
+        #     img[hinge_cords[x]] = 0
+        # 'smaller' angle
+        phi1 = get_angle_small(x_origin, y_origin, x_low, y_low)
+        # rescale tp [0, pi]
+        phi1 += (PI / 2)
+        if not (0 <= phi1 <= PI):
+            print("phi1 is a bitch")
+        # 'larger' angle
+        phi2 = get_angle(x_origin, y_origin, x_high, y_high)
+        # rescale to [0, 2*PI]
+        phi2 += PI
+        if not (0 <= phi2 <= 2*PI):
+            print("phi2 is a bitch")
 
         histogram.append((phi1, phi2))
 
     return histogram
 
 def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
-    # given a time period, calculate the Hinge histogram occurences of phi1 and phi2
-    '''
-    sample img to develop function
-    sample_img = herodian_imgs[img_label][0]
-    Gaussian blurring w/ 5x5 kernel for better edge detection
-    blurred_image  = cv2.GaussianBlur(img,(5,5),0)
-    Edges = cv2.Canny(blurred_image,0,100)
-    show edges found
-    imgplot = plt.imshow(Edges)
-    plt.show()
-    '''
+
     for images in herodian_imgs[img_label]:
         images = cv2.bitwise_not(images)
-        # print(images)
         blurred_image = cv2.GaussianBlur(images, (5, 5), 0)
         Edges = cv2.Canny(blurred_image, 0, 100)
         thresh = cv2.threshold(images, 30, 255, cv2.THRESH_BINARY)[1]
@@ -72,33 +80,44 @@ def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
         # get the coordinates of the contour pixels
         contours = np.where(cont_img == 255)
         list_of_cont_cords = list(zip(contours[0], contours[1]))
+        sorted_cords = sort_cords(list_of_cont_cords)
+        # plot the sorted cords in order just to be sure everything went fine
+        # sorted_coords_animation(sorted_cords)
+        hist = get_histogram(sorted_cords, 5, cont_img)
+        print(hist)
+        # hist = remove_redundant_angles(hist)
 
+        # put the angles vals in two lists (needed to get co-occurence)
+        list_phi1 = []
+        list_phi2 = []
+        for instance in hist:
+            list_phi1.append(instance[0])
+            list_phi2.append(instance[1])
 
-        hist = get_histogram(list_of_cont_cords, 5)
-        x_plt = []
-        y_plt = []
-        for i in range(len(hist)):
-            x_plt.append(hist[i][0])
-            y_plt.append(hist[i][1])
+        # transform entries in both lists to indices in the correspoding bin
+        hist_phi1 = plt.hist(list_phi1, bins=12, range=[0, PI])
+        plt.show()
+        bins_phi1 = hist_phi1[1]
+        inds_phi1 = np.digitize(list_phi1, bins_phi1)
 
+        hist_phi2 = plt.hist(list_phi2, bins=24,range=[0, 2*PI])
+        plt.show()
+        bins_phi2 = hist_phi2[1]
+        inds_phi2 = np.digitize(list_phi2, bins_phi2)
+
+        hinge_features = []
+        for i in range(len(inds_phi1)):
+            hinge_features.append((inds_phi1[i], inds_phi2[i]))
+        print(hinge_features)
+        print(len(hinge_features))
         fig, axs = plt.subplots(2)
-        fig.suptitle('Vertically stacked subplots')
+        fig.suptitle('Char image with histogram')
         axs[0].imshow(corners_of_img)
-        axs[1].hist2d(x_plt,y_plt, bins = [15, 15])
+        axs[1].hist2d(inds_phi1, inds_phi2, bins=[12, 24])
         plt.show()
 
 
-        # corners = cv2.goodFeaturesToTrack(thresh, 4, 0.01, 50, useHarrisDetector=True, k=0.04)
-        # imagesrgb = cv2.cvtColor(images, cv2.COLOR_GRAY2RGB)
-        # print("Corners:")
-        # for c in corners:
-        #     x, y = c.ravel()
-        #     print(corners)
-        #     cv2.circle(imagesrgb, (x, y), 3, (255, 0,), -1)
-        #
-        # cv2.imshow("binary image", thresh)
-        # cv2.imshow("iamge/cornersdrawn", imagesrgb)
-        # cv2.waitKey(0)
+
 
 #---TO-DO:---#
 #1)create def get_textural_feature
@@ -126,7 +145,7 @@ if __name__ == '__main__':
                         'Bet', 'Shin', 'Resh', 'Zayin', 'Alef', 'Tsadi-medial', 'Het']
 
     # Retrieve img lists from each class' each character AND resize them
-    new_size = (50, 50)  # change this to something which is backed up by a reason
+    new_size = (40, 40)  # change this to something which is backed up by a reason
     archaic_imgs = {char:
                     [cv2.resize(img, new_size).flatten() for img in get_style_char_images(style_archaic_path, char)]
                     for char in archaic_characters}
