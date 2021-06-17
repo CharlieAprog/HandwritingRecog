@@ -10,21 +10,24 @@ import sys
 
 PI = 3.14159265359
 
+# verify that this is correct
 def get_angle_small(x_origin, y_origin, x_up, y_up):
-    # avoid 0 division and set angle to 180 degress in that case
-    if (x_up - x_origin) == 0:
-        val = 100
+    # avoid 0 division and set angle to 90 degress in that case
+    if x_up - x_origin == 0:
+        return 0
     else:
         val = (y_up - y_origin) / (x_up - x_origin)
     return math.atan(val)
 
+# verify that this is correct
 def get_angle(x_origin, y_origin, x_up, y_up):
-    # direction vector of one leg
-    delta_x = x_up - x_origin
-    delta_y = y_up - y_origin
+    # direction vector from origin
+    direction_x = x_up - x_origin
+    direction_y = y_up - y_origin
+    # compare this vector to horizontal vector [1, 0]
     # change of direction vector with horizontal vector
-    delta_x = delta_x - 1
-    phi = math.atan2(delta_y, delta_x)
+    delta_x = direction_x - 1
+    phi = math.atan2(direction_y, delta_x)
     return phi
 
 def get_histogram(list_of_cont_cords, dist_between_points, img):
@@ -41,7 +44,20 @@ def get_histogram(list_of_cont_cords, dist_between_points, img):
         x_high = list_of_cont_cords[i+(2*dist_between_points)][0]
         y_high = list_of_cont_cords[i+(2*dist_between_points)][1]
         i += dist_between_points
+
+        # 'smaller' angle
+        phi1 = get_angle_small(x_origin, y_origin, x_low, y_low)
+
+        if not (0 <= phi1 <= PI):
+            print("phi1 is a bitch")
+        # 'larger' angle
+        phi2 = get_angle(x_origin, y_origin, x_high, y_high)
+        if not (0 <= phi2 <= 2*PI):
+            print("phi2 is a bitch")
+
         # check if cords work
+        # PLOT the hinge points
+        # print(phi1, phi2)
         # hinge_cords = [(x_low, y_low), (x_origin, y_origin), (x_high, y_high)]
         # print(hinge_cords)
         # for j in range(len(hinge_cords)):
@@ -50,19 +66,6 @@ def get_histogram(list_of_cont_cords, dist_between_points, img):
         # plt.show()
         # for x in range(len(hinge_cords)):
         #     img[hinge_cords[x]] = 0
-        # 'smaller' angle
-        phi1 = get_angle_small(x_origin, y_origin, x_low, y_low)
-        # rescale tp [0, pi]
-        phi1 += (PI / 2)
-        if not (0 <= phi1 <= PI):
-            print("phi1 is a bitch")
-        # 'larger' angle
-        phi2 = get_angle(x_origin, y_origin, x_high, y_high)
-        # rescale to [0, 2*PI]
-        phi2 += PI
-        if not (0 <= phi2 <= 2*PI):
-            print("phi2 is a bitch")
-
         histogram.append((phi1, phi2))
 
     return histogram
@@ -77,6 +80,8 @@ def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
         # apply canny to detect the contours of the char
         corners_of_img = cv2.Canny(thresh, 0, 100)
         cont_img = np.asarray(corners_of_img)
+        plt.imshow(cont_img)
+        plt.show()
         # get the coordinates of the contour pixels
         contours = np.where(cont_img == 255)
         list_of_cont_cords = list(zip(contours[0], contours[1]))
@@ -96,20 +101,23 @@ def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
 
         # transform entries in both lists to indices in the correspoding bin
         hist_phi1 = plt.hist(list_phi1, bins=12, range=[0, PI])
-        plt.show()
+        # plt.show()
         bins_phi1 = hist_phi1[1]
+        print(bins_phi1)
         inds_phi1 = np.digitize(list_phi1, bins_phi1)
-
+        print(list_phi1)
+        print(inds_phi1)
         hist_phi2 = plt.hist(list_phi2, bins=24,range=[0, 2*PI])
-        plt.show()
+        # plt.show()
         bins_phi2 = hist_phi2[1]
         inds_phi2 = np.digitize(list_phi2, bins_phi2)
 
-        hinge_features = []
-        for i in range(len(inds_phi1)):
-            hinge_features.append((inds_phi1[i], inds_phi2[i]))
-        print(hinge_features)
-        print(len(hinge_features))
+        hinge_features = np.zeros([12, 24], dtype=int)
+        # for i in range(len(inds_phi1)):
+        #     print(i)
+        #     hinge_features[inds_phi1[i]][inds_phi2[i]] += 1
+        # print(hinge_features)
+
         fig, axs = plt.subplots(2)
         fig.suptitle('Char image with histogram')
         axs[0].imshow(corners_of_img)
