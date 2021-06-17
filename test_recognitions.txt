@@ -1,19 +1,19 @@
 YES: Bet
 NO: Tet --> Shin
-NO: Lamed --> Alef --> Segmentation fault
-NO: Lamed --> Waw --> Segmentation fault
+NO: Lamed --> Alef
+NO: Lamed --> Waw
 YES: Taw
 YES: Pe
 NO: Kaf-final --> Unknown
 YES: Mem-medial
 YES: Dalet
 YES: Waw
-NO: Segmentation fault
+SEGMENTATION FAULT
 NO: Tet --> Shin
 YES: Pe
 YES: Ayin
 YES: Pe
-NO: Segmentation fault
+SEGMENTATION FAULT
 NO: Tet --> Samekh/Smth else
 YES: Yod
 NO: Ayin --> Yod
@@ -21,10 +21,10 @@ NO: Gimel --> Waw
 YES: Tet
 YES: Tsadi-final
 YES: Resh
-NO: Segmentation fault
+SEGMENTATION FAULT
 NO: Mem --> Lamed
 YES: Het
-NO: Segmentation fault
+SEGMENTATION FAULT
 YES: Waw
 YES: Gimel
 YES: Samekh
@@ -32,4 +32,35 @@ UNDECIDED
 NO: Gimel --> Ayin
 YES: Yod
 YES: Waw
-NO: Segmentation fault
+SEGMENTATION FAULT
+NO: Gimel --> Het + Something
+YES: Taw
+YES: Resh
+YES: Shin
+YES: Resh
+YES: Alef
+NO: Tet --> Shin
+NO: Samekh --> Pe / Mem-medial / Nun-medial
+YES: Mem-medial
+NO: Tet --> Lamed
+YES: Bet
+YES: Samekh
+YES: Zayin
+SEGMENTATION FAULT
+YES: Gimel
+UNDECIDED
+NO: Lamed --> Waw
+YES: Bet
+NO: Tet --> Lamed
+YES: Waw
+YES: He
+SEGMENTATION FAULT
+SEGMENTATION FAULT
+NO: Tet --> Kaf-final
+YES: He
+
+TOTAL:
+- CORRECT: 33
+- SEGMENTATION FAULT: 8
+- UNDECIDED (could be the predicted as well as another character): 2
+- INCORRECT: 17
