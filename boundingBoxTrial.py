@@ -1,10 +1,11 @@
-from matplotlib.pyplot import plot
+from matplotlib.pyplot import plot, title
 import itertools
 import copy
 from Text_Segmentation.plotting import plotSimpleImages, plotGrid
 from Text_Segmentation.lineSegmentation import calc_outlier, timer
 from Text_Segmentation.plotting import plotSimpleImages
-from Text_Segmentation.characterSegmentation import character_segment, get_sliding_words, slide_over_word, getComponentClusters, filter_characters, run_character_segment
+from Text_Segmentation.characterSegmentation import character_segment, \
+    get_sliding_words, slide_over_word, getComponentClusters, filter_characters, run_character_segment, destructure_characters
 from Text_Segmentation.textSegmentation import text_segment
 from Text_Segmentation import *
 from segmentation_to_recog import *
@@ -14,11 +15,7 @@ image_num = 18
 #lines = the images of each line of an image
 #words_in_lines = each word in each line of image,
 #sliding_words = sliding window of each of these words
-#TODO   DONE -a make bounding boxes have top and bottom of line instead of max and min of conected component 
-#       DONE -b remove any recognised bounding boxes that are inside of a larger bonding box 
-#       -b.1 remove artifcats if they touch the boudries
-#       -b.2 trim characters
-#       -c obtain remaining images of suspected instances where there are multiple characters
+#TODO   
 #       -d on these suspected multi characters, run sliding window and obtain n images
 #       -e run CNN on these n images and predict the label and mark the highest certainty region
 #       -f (hopefully do not have to implement ngrams)
@@ -31,32 +28,52 @@ image_num = 18
 # |-----------------------------------------------------|
 lines, words_in_lines = text_segment(image_num)
 # Get all characters from all words
-segmented_word_box_images, segmented_word_box_areas, all_characters, character_widths, all_box_boundaries = run_character_segment(words_in_lines)
-filtered_word_box_images_all_lines = filter_characters(segmented_word_box_areas, segmented_word_box_images, all_box_boundaries, words_in_lines)
+segmented_word_box_images, segmented_word_box_areas, all_box_boundaries = run_character_segment(words_in_lines)
+filtered_word_box_images_all_lines, character_widths = filter_characters(segmented_word_box_areas, segmented_word_box_images, all_box_boundaries, words_in_lines)
 
-
-# identify long characters
-# mean_character_width = np.mean(character_widths)
-# for char_idx in range(len(characters)):
-#     if character_widths[char_idx] > mean_character_width + np.std(character_widths):
-#         print(characters[char_idx])
-#         plotSimpleImages([characters[char_idx]])
-
-
-for i in range(3):
-    print(f"Line {i}")
-    for z in range(len(segmented_word_box_images[i])):
-        plotSimpleImages(segmented_word_box_images[i][z], title="OLD")
-    for j in range(len(filtered_word_box_images_all_lines[i])):
-        plotSimpleImages(filtered_word_box_images_all_lines[i][j], title="NEW")
 
 
 # |-----------------------------------------------------|
 # |              CHARACTER RECOGNITION                  |
 # |-----------------------------------------------------|
-window_size = 100
-shift = 1
-sliding_words = get_sliding_words(words_in_lines, window_size, shift)
+characters = destructure_characters(filtered_word_box_images_all_lines)
+mean_character_width = np.mean(character_widths)
+model = TheRecognizer()
+model.load_model(model.load_checkpoint('40_char_rec.ckpt', map_location=torch.device('cpu')))
+print(mean_character_width + np.std(character_widths))
+
+
+name2idx = {'Alef': 0, 'Ayin': 1, 'Bet': 2, 'Dalet': 3, 'Gimel' : 4, 'He': 5,
+                'Het': 6, 'Kaf': 7, 'Kaf-final': 8, 'Lamed': 9, 'Mem': 10,
+                'Mem-medial': 11, 'Nun-final': 12, 'Nun-medial': 13, 'Pe': 14,
+                'Pe-final': 15, 'Qof': 16, 'Resh': 17, 'Samekh': 18, 'Shin': 19,
+                'Taw': 20, 'Tet': 21, 'Tsadi-final': 22, 'Tsadi-medial': 23,
+                'Waw': 24, 'Yod': 25, 'Zayin': 26}
+
+
+prediction_list = []
+window_size = int(mean_character_width)
+shift = 10
+for char_idx, character_segment in enumerate(characters): 
+    if character_segment.shape[1] > mean_character_width + np.std(character_widths): #multiple characters suspected
+        print("\nMultiple characters classifictiaon")
+        sliding_characters = slide_over_word(character_segment, window_size, shift)
+        for idx, slide in enumerate(sliding_characters):
+            predicted_label, probability = get_label_probability(slide, model)
+            predicted_letter = list(name2idx.keys())[predicted_label]
+            print(f'Predicted label:{predicted_letter} probabilty:{probability}')
+            print(f"window: [{shift*idx}-{window_size + shift*idx}]")
+        plotSimpleImages([character_segment], title='identified multi character')
+    else: # single character
+        print("\nSingle character classification")
+        predicted_label, probability = get_label_probability(character_segment, model)
+        predicted_letter = list(name2idx.keys())[predicted_label]
+        print(f'Predicted label:{predicted_letter} probabilty:{probability}')
+        plotSimpleImages([character_segment], title=f'{predicted_label+1}:{predicted_letter}')
+
+            
+
+
 # label, prob_bounding_box = get_label_probability(words_in_lines[0][1], model)
 # print(label, prob_bounding_box)
 

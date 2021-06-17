@@ -1,0 +1,35 @@
+YES: Bet
+NO: Tet --> Shin
+NO: Lamed --> Alef --> Segmentation fault
+NO: Lamed --> Waw --> Segmentation fault
+YES: Taw
+YES: Pe
+NO: Kaf-final --> Unknown
+YES: Mem-medial
+YES: Dalet
+YES: Waw
+NO: Segmentation fault
+NO: Tet --> Shin
+YES: Pe
+YES: Ayin
+YES: Pe
+NO: Segmentation fault
+NO: Tet --> Samekh/Smth else
+YES: Yod
+NO: Ayin --> Yod
+NO: Gimel --> Waw
+YES: Tet
+YES: Tsadi-final
+YES: Resh
+NO: Segmentation fault
+NO: Mem --> Lamed
+YES: Het
+NO: Segmentation fault
+YES: Waw
+YES: Gimel
+YES: Samekh
+UNDECIDED
+NO: Gimel --> Ayin
+YES: Yod
+YES: Waw
+NO: Segmentation fault

@@ -37,7 +37,7 @@ def trim_line(line):
                     b1 = 0
             elif vertical_projection[idx] != 0:  # black
                 if b1 == 0:  # start of black
-                    temp1 = idx - 5 if idx - 5 > 0 else idx
+                    temp1 = idx - 1 if idx - 1 > 0 else idx
                 if b1 > line_threshold:
                     beginning = temp1
                 b1 += 1
@@ -51,9 +51,9 @@ def trim_line(line):
             elif vertical_projection[idx2] != 0:  # black
 
                 if b2 == 0:  # start of black
-                    temp2 = idx2 + 5 if idx + \
-                        5 < len(vertical_projection) else idx2
-                if b2 > line_threshold:
+                    temp2 = idx2 + 1 if idx + \
+                        1 < len(vertical_projection) else idx2
+                if b2 > 10:
                     end = temp2
                 b2 += 1
 

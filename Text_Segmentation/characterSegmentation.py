@@ -1,5 +1,6 @@
 from Text_Segmentation.plotting import *
 from Text_Segmentation.textSegmentation import calc_outlier
+from Text_Segmentation.textSegmentation import trim_360
 import itertools
 import copy
 
@@ -10,6 +11,7 @@ def slide_over_word(word, window_size, shift):
     for snap in range(0, width - window_size, shift):
         images.append(word[:, snap:snap + window_size])
         # plotSimpleImages([word[:, snap:snap + window_size]])
+    images.append(word[:, word.shape[1] - window_size : word.shape[1]])
     return images
 
 
@@ -101,8 +103,6 @@ def character_segment(word, title=None):
 def run_character_segment(words_in_lines):
     segmented_word_box_images = []
     segmented_word_box_areas = []
-    all_characters = []
-    character_widths = []
     all_box_boundaries = []
     for line_idx, line in enumerate(words_in_lines):
         line_word_images = []
@@ -114,14 +114,10 @@ def run_character_segment(words_in_lines):
             line_word_images.append(pixels)
             line_word_areas.append(areas)
             box_boundaries_lines.append(box_boundaries)
-            for character in pixels:
-                if character.size > 0:
-                    all_characters.append(character)
-                    character_widths.append(len(character[0, :]))
         segmented_word_box_images.append(line_word_images)
         segmented_word_box_areas.append(line_word_areas)
         all_box_boundaries.append(box_boundaries_lines)
-    return segmented_word_box_images, segmented_word_box_areas, all_characters, character_widths, all_box_boundaries
+    return segmented_word_box_images, segmented_word_box_areas, all_box_boundaries
 
 
 def is_boundary_included(all_boundries, cluster):
@@ -160,6 +156,7 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
     # the average word size of the current document
     outlier_thr = calc_outlier(flat_boxes_thr)
     filtered_word_box_images = []
+    character_widths = []
     for i, line in enumerate(segmented_word_box_images):
         line_list = []
         for j, word in enumerate(line):
@@ -182,17 +179,18 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
                                     skip_right_pruning = True
                                 if taller_cluster != []:
                                     if is_image_border_active(taller_cluster):
-                                        word_list.append(remove_character_artifacts(character, skip_left_pruning,
-                                                                                    skip_right_pruning))
+                                        word_list.append(trim_360(remove_character_artifacts(character, skip_left_pruning,
+                                                                                    skip_right_pruning)))
                                     else:
-                                        word_list.append(remove_character_artifacts(taller_cluster, skip_left_pruning,
-                                                                                    skip_right_pruning))
+                                        word_list.append(trim_360(remove_character_artifacts(taller_cluster, skip_left_pruning,
+                                                                                    skip_right_pruning)))
+                                    character_widths.append(word_list[-1].shape[1])
                 if word_list != []:
                     line_list.append(word_list)
         if line_list != []:
             filtered_word_box_images.append(line_list)
 
-    return filtered_word_box_images
+    return filtered_word_box_images, character_widths
 
 
 def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False):
@@ -209,5 +207,17 @@ def remove_character_artifacts(image, skip_left_pruning=False, skip_right_prunin
                 for y, x in cluster:
                     img_copy[y, x] = 0
                 break
-    plotSimpleImages([img_copy, image])
+    #plotSimpleImages([img_copy, image])
     return img_copy
+
+def destructure_characters(characters_in_line):
+    characters = []
+    for line in characters_in_line:
+        for word in line:
+            for character in word:
+                characters.append(character.astype(int))
+
+    return characters
+
+
+        
