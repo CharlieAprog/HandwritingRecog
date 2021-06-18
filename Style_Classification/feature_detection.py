@@ -65,8 +65,6 @@ def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
         # apply canny to detect the contours of the char
         corners_of_img = cv2.Canny(thresh, 0, 100)
         cont_img = np.asarray(corners_of_img)
-        plt.imshow(cont_img)
-        plt.show()
         # get the coordinates of the contour pixels
         contours = np.where(cont_img == 255)
         list_of_cont_cords = list(zip(contours[0], contours[1]))
@@ -76,7 +74,7 @@ def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
         hist = get_histogram(sorted_cords, 2, cont_img)
         print('hist')
 
-        #hist = remove_redundant_angles(hist)
+        # hist = remove_redundant_angles(hist)
         #print("after removal")
 
 
@@ -99,15 +97,35 @@ def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
         inds_phi2 = np.digitize(list_phi2, bins_phi2)
 
         hinge_features = np.zeros([24, 24], dtype=int)
-        for i in range(len(inds_phi1)-1):
-            #print(inds_phi1[i], inds_phi2[i])
-            hinge_features[inds_phi1[i]-1][inds_phi2[i]-1] += 1
+        num_features = 0
+        for i in range(len(inds_phi1)):
+            if inds_phi1[i] <= inds_phi2[i]:
+                num_features += 1
+                hinge_features[inds_phi1[i]-1][inds_phi2[i]-1] += 1
+        print(num_features)
         print(hinge_features)
+
+        feature_vector = []
+        x= 0
+        for j in range(24):
+            feature_vector.append(hinge_features[j][x:])
+            x += 1
+
+        feature_vector = [item for sublist in feature_vector for item in sublist]
+        print(feature_vector, len(feature_vector))
+        print(sum(feature_vector))
+        notalistbitch = np.asarray(feature_vector)
+        massdist = [element/sum(feature_vector) for element in notalistbitch]
+        print(massdist)
+        plt.show()
+        vals = np.arange(0, 300)
+
+
 
         fig, axs = plt.subplots(2)
         fig.suptitle('Char image with histogram')
         axs[0].imshow(corners_of_img)
-        axs[1].hist2d(inds_phi1, inds_phi2, bins=[12, 24])
+        axs[1].plot(vals, massdist)
         plt.show()
 
 
