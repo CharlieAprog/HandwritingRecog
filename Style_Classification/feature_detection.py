@@ -3,62 +3,46 @@ import math
 import cv2
 from dim_reduction import get_style_char_images
 from hinge_utils import *
-from segmentation_to_recog import resize_pad
+#from segmentation_to_recog import resize_pad
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
 
 PI = 3.14159265359
 
-# verify that this is correct
-def get_angle_small(x_origin, y_origin, x_up, y_up):
-    # avoid 0 division and set angle to 90 degress in that case
-    if x_up - x_origin == 0:
-        return 0
-    else:
-        val = (y_up - y_origin) / (x_up - x_origin)
-    return math.atan(val)
 
-# verify that this is correct
 def get_angle(x_origin, y_origin, x_up, y_up):
-    # direction vector from origin
-    direction_x = x_up - x_origin
-    direction_y = y_up - y_origin
-    # compare this vector to horizontal vector [1, 0]
-    # change of direction vector with horizontal vector
-    delta_x = direction_x - 1
-    phi = math.atan2(direction_y, delta_x)
-    return phi
+    output = math.degrees(math.atan2(y_up-y_origin,x_up-x_origin))
+
+    if output < 0:
+        output = 180 + (180+output)
+
+    return output
 
 def get_histogram(list_of_cont_cords, dist_between_points, img):
     histogram = []
     i = 0
     while i < (len(list_of_cont_cords) - (2*dist_between_points)):
         # low hinge end point
-        x_low = list_of_cont_cords[i][0]
-        y_low = list_of_cont_cords[i][1]
+        x_low = list_of_cont_cords[i][1]
+        y_low = list_of_cont_cords[i][0]
         # mid point
-        x_origin = list_of_cont_cords[i+dist_between_points][0]
-        y_origin = list_of_cont_cords[i+dist_between_points][1]
+        x_origin = list_of_cont_cords[i+dist_between_points][1]
+        y_origin = list_of_cont_cords[i+dist_between_points][0]
         # 'upper' hinge end point
-        x_high = list_of_cont_cords[i+(2*dist_between_points)][0]
-        y_high = list_of_cont_cords[i+(2*dist_between_points)][1]
+        x_high = list_of_cont_cords[i+(2*dist_between_points)][1]
+        y_high = list_of_cont_cords[i+(2*dist_between_points)][0]
         i += dist_between_points
 
-        # 'smaller' angle
-        phi1 = get_angle_small(x_origin, y_origin, x_low, y_low)
+        phi1 = get_angle(x_origin, (40-y_origin), x_low, (40-y_low))
 
-        if not (0 <= phi1 <= PI):
-            print("phi1 is a bitch")
-        # 'larger' angle
-        phi2 = get_angle(x_origin, y_origin, x_high, y_high)
-        if not (0 <= phi2 <= 2*PI):
-            print("phi2 is a bitch")
+        phi2 = get_angle(x_origin, (40-y_origin), x_high, (40-y_high))
 
+        histogram.append((phi1, phi2))
         # check if cords work
         # PLOT the hinge points
         # print(phi1, phi2)
-        # hinge_cords = [(x_low, y_low), (x_origin, y_origin), (x_high, y_high)]
+        # hinge_cords = [(y_low, x_low), (y_origin, x_origin), (y_high,x_high)]
         # print(hinge_cords)
         # for j in range(len(hinge_cords)):
         #     img[hinge_cords[j]] = 100
@@ -66,13 +50,14 @@ def get_histogram(list_of_cont_cords, dist_between_points, img):
         # plt.show()
         # for x in range(len(hinge_cords)):
         #     img[hinge_cords[x]] = 0
-        histogram.append((phi1, phi2))
+        # histogram.append((phi1, phi2))
 
     return histogram
 
 def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
 
     for images in herodian_imgs[img_label]:
+        cv2.imshow("lll", images)
         images = cv2.bitwise_not(images)
         blurred_image = cv2.GaussianBlur(images, (5, 5), 0)
         Edges = cv2.Canny(blurred_image, 0, 100)
@@ -88,9 +73,12 @@ def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
         sorted_cords = sort_cords(list_of_cont_cords)
         # plot the sorted cords in order just to be sure everything went fine
         # sorted_coords_animation(sorted_cords)
-        hist = get_histogram(sorted_cords, 5, cont_img)
-        print(hist)
-        # hist = remove_redundant_angles(hist)
+        hist = get_histogram(sorted_cords, 2, cont_img)
+        print('hist')
+
+        #hist = remove_redundant_angles(hist)
+        #print("after removal")
+
 
         # put the angles vals in two lists (needed to get co-occurence)
         list_phi1 = []
@@ -100,23 +88,21 @@ def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
             list_phi2.append(instance[1])
 
         # transform entries in both lists to indices in the correspoding bin
-        hist_phi1 = plt.hist(list_phi1, bins=12, range=[0, PI])
+        hist_phi1 = plt.hist(list_phi1, bins=24, range=[0, 360])
         # plt.show()
         bins_phi1 = hist_phi1[1]
-        print(bins_phi1)
         inds_phi1 = np.digitize(list_phi1, bins_phi1)
-        print(list_phi1)
-        print(inds_phi1)
-        hist_phi2 = plt.hist(list_phi2, bins=24,range=[0, 2*PI])
+
+        hist_phi2 = plt.hist(list_phi2, bins=24,range=[0, 360])
         # plt.show()
         bins_phi2 = hist_phi2[1]
         inds_phi2 = np.digitize(list_phi2, bins_phi2)
 
-        hinge_features = np.zeros([12, 24], dtype=int)
-        # for i in range(len(inds_phi1)):
-        #     print(i)
-        #     hinge_features[inds_phi1[i]][inds_phi2[i]] += 1
-        # print(hinge_features)
+        hinge_features = np.zeros([24, 24], dtype=int)
+        for i in range(len(inds_phi1)-1):
+            #print(inds_phi1[i], inds_phi2[i])
+            hinge_features[inds_phi1[i]-1][inds_phi2[i]-1] += 1
+        print(hinge_features)
 
         fig, axs = plt.subplots(2)
         fig.suptitle('Char image with histogram')
@@ -166,7 +152,7 @@ if __name__ == '__main__':
 
     print("working")
     archaic_imgs_unflattened = {char:
-                    [cv2.resize(img, new_size) for img in get_style_char_images(style_archaic_path, char)]
+                    [ cv2.resize(img, new_size) for img in get_style_char_images(style_archaic_path, char)]
                     for char in archaic_characters}
     hasmonean_imgs_unflattened = {char:
                     [cv2.resize(img, new_size) for img in get_style_char_images(style_hasmonean_path, char)]

@@ -12,7 +12,7 @@ def find_closest_cord(current_cord, contour_cords):
         if dist <= min_dist:
             min_dist = dist
             min_dist_list.append((i, min_dist))
-    # from the cords that have an equal min dist get the one closest in terms of x
+    # from the cords that have an equal min dist get the one closest in terms of y
     for j in range(len(min_dist_list)):
         if min_dist_list[j][1] == min_dist:
             # add direction prio
@@ -44,7 +44,7 @@ def sort_cords(contour_cords):
 def remove_redundant_angles(hist):
     print(len(hist))
     for instance in hist:
-        if instance[0] > instance[1]:
+        if instance[0] <= instance[1]:
             hist.remove(instance)
     print(len(hist))
     return hist
