@@ -61,7 +61,7 @@ def trim_line(line):
             break
 
     new_line = line[:, beginning:end]
-    return new_line
+    return new_line.astype(np.uint8)
 
 @timer
 def segment_words(line, vertical_projection):
