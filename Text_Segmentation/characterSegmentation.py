@@ -204,7 +204,7 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
     return filtered_word_box_images, character_widths
 
 
-def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False, min_cluster = 500):
+def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False, min_cluster = 500, internal_min_cluster = 30):
     img_copy = copy.deepcopy(image)
     num_labels, labels = cv2.connectedComponents(img_copy)
     clusters = getComponentClusters(num_labels, labels)
@@ -217,6 +217,11 @@ def remove_character_artifacts(image, skip_left_pruning=False, skip_right_prunin
                 if (x == 0 and left_border[y] and not skip_left_pruning
                     or x == img_copy.shape[1] - 1 and right_border[y] and not skip_right_pruning) \
                         and img_copy[y, x]:
+                    for y, x in cluster:
+                        img_copy[y, x] = 0
+                    break
+            if np.sum(cluster) < internal_min_cluster:
+                for y, x in cluster:
                     for y, x in cluster:
                         img_copy[y, x] = 0
                     break
