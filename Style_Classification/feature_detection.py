@@ -1,5 +1,4 @@
 import math
-
 import cv2
 from dim_reduction import get_style_char_images
 from hinge_utils import *
@@ -9,6 +8,26 @@ import numpy as np
 import sys
 
 PI = 3.14159265359
+def noise_removal(img,morphology=False):
+    img = cv2.bitwise_not(img)
+    resized_pad_img = img.copy()
+    # Filter using contour area and remove small noise
+    retval, resized_pad_img = cv2.threshold(resized_pad_img.copy(), thresh=30, maxval=255,
+                                   type=cv2.THRESH_BINARY)
+    cnts, _ = cv2.findContours(resized_pad_img.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    cnt = sorted(cnts, key=cv2.contourArea, reverse=True)
+    # ROI will be object with biggest contour
+    cnt = cnt[1:]
+    mask = np.ones(img.shape[:2], dtype="uint8") * 255
+    for c in cnt:
+        cv2.drawContours(mask, [c], -1, 0, -1)
+    mask = cv2.bitwise_not(mask)
+    newimg = (resized_pad_img - mask) 
+    newimg = cv2.bitwise_not(newimg)
+    if morphology:
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
+        newimg = cv2.morphologyEx(newimg, cv2.MORPH_CLOSE, kernel)
+    return newimg,mask
 
 
 def get_angle(x_origin, y_origin, x_up, y_up):
@@ -54,62 +73,72 @@ def get_histogram(list_of_cont_cords, dist_between_points, img):
 
     return histogram
 
+def hinge_main(img_label,imgs):
+    for images in imgs[img_label]:
+            # cv2.imshow("lll", images)
+            # images = cv2.bitwise_not(images)
+            images = cv2.GaussianBlur(images,(5,5),0)
+            img,mask = noise_removal(images)
+            fig, axs = plt.subplots(3)
+            # axs[0].imshow(images)
+            # axs[1].imshow(img)
+            # axs[2].imshow(mask)
+            # plt.show()
+            # apply canny to detect the contours of the char
+            corners_of_img = cv2.Canny(img, 0, 100)
+            cont_img = np.asarray(corners_of_img)
+            # plt.imshow(cont_img)
+            # plt.show()
+            # get the coordinates of the contour pixels
+            contours = np.where(cont_img == 255)
+            list_of_cont_cords = list(zip(contours[0], contours[1]))
+            sorted_cords = sort_cords(list_of_cont_cords)
+            # plot the sorted cords in order just to be sure everything went fine
+            # sorted_coords_animation(sorted_cords)
+            hist = get_histogram(sorted_cords, 2, cont_img)
+
+            hist = remove_redundant_angles(hist)
+            # put the angles vals in two lists (needed to get co-occurence)
+            list_phi1 = []
+            list_phi2 = []
+            for instance in hist:
+                list_phi1.append(instance[0])
+                list_phi2.append(instance[1])
+
+            # transform entries in both lists to indices in the correspoding bin
+            hist_phi1 = plt.hist(list_phi1, bins=24, range=[0, 360])
+            # plt.show()
+            bins_phi1 = hist_phi1[1]
+            inds_phi1 = np.digitize(list_phi1, bins_phi1)
+
+            hist_phi2 = plt.hist(list_phi2, bins=24,range=[0, 360])
+            # plt.show()
+            bins_phi2 = hist_phi2[1]
+            inds_phi2 = np.digitize(list_phi2, bins_phi2)
+
+            hinge_features = np.zeros([24, 24], dtype=int)
+            for i in range(len(inds_phi1)-1):
+                #print(inds_phi1[i], inds_phi2[i])
+                hinge_features[inds_phi1[i]-1][inds_phi2[i]-1] += 1
+            # print(hinge_features)
+
+            # fig, axs = plt.subplots(2)
+            # fig.suptitle('Char image with histogram')
+            # axs[0].imshow(corners_of_img)
+            # axs[1].hist2d(inds_phi1, inds_phi2, bins=[12, 24])
+            # plt.show()
+    return  hinge_features
+
 def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
 
-    for images in herodian_imgs[img_label]:
-        cv2.imshow("lll", images)
-        images = cv2.bitwise_not(images)
-        blurred_image = cv2.GaussianBlur(images, (5, 5), 0)
-        Edges = cv2.Canny(blurred_image, 0, 100)
-        thresh = cv2.threshold(images, 30, 255, cv2.THRESH_BINARY)[1]
-        # apply canny to detect the contours of the char
-        corners_of_img = cv2.Canny(thresh, 0, 100)
-        cont_img = np.asarray(corners_of_img)
-        plt.imshow(cont_img)
-        plt.show()
-        # get the coordinates of the contour pixels
-        contours = np.where(cont_img == 255)
-        list_of_cont_cords = list(zip(contours[0], contours[1]))
-        sorted_cords = sort_cords(list_of_cont_cords)
-        # plot the sorted cords in order just to be sure everything went fine
-        # sorted_coords_animation(sorted_cords)
-        hist = get_histogram(sorted_cords, 2, cont_img)
-        print('hist')
+    archaic_hinge = hinge_main(img_label,archaic_imgs)
+    hasmonean_hinge = hinge_main(img_label,hasmonean_imgs)
+    herodian_hinge = hinge_main(img_label,herodian_imgs)
 
-        #hist = remove_redundant_angles(hist)
-        #print("after removal")
-
-
-        # put the angles vals in two lists (needed to get co-occurence)
-        list_phi1 = []
-        list_phi2 = []
-        for instance in hist:
-            list_phi1.append(instance[0])
-            list_phi2.append(instance[1])
-
-        # transform entries in both lists to indices in the correspoding bin
-        hist_phi1 = plt.hist(list_phi1, bins=24, range=[0, 360])
-        # plt.show()
-        bins_phi1 = hist_phi1[1]
-        inds_phi1 = np.digitize(list_phi1, bins_phi1)
-
-        hist_phi2 = plt.hist(list_phi2, bins=24,range=[0, 360])
-        # plt.show()
-        bins_phi2 = hist_phi2[1]
-        inds_phi2 = np.digitize(list_phi2, bins_phi2)
-
-        hinge_features = np.zeros([24, 24], dtype=int)
-        for i in range(len(inds_phi1)-1):
-            #print(inds_phi1[i], inds_phi2[i])
-            hinge_features[inds_phi1[i]-1][inds_phi2[i]-1] += 1
-        print(hinge_features)
-
-        fig, axs = plt.subplots(2)
-        fig.suptitle('Char image with histogram')
-        axs[0].imshow(corners_of_img)
-        axs[1].hist2d(inds_phi1, inds_phi2, bins=[12, 24])
-        plt.show()
-
+    print(archaic_hinge)
+    print(hasmonean_hinge)
+    print(herodian_hinge)
+    return archaic_hinge,hasmonean_hinge,herodian_hinge
 
 
 
@@ -124,7 +153,7 @@ def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
 
 if __name__ == '__main__':
     # / home / jan / PycharmProjects / HandwritingRecog /
-    style_base_path = '/home/jan/PycharmProjects/HandwritingRecog/data/characters_for_style_classification_balance_morph/'
+    style_base_path = 'C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/data/characters_for_style_classification_balance_morph/'
     style_archaic_path = style_base_path + 'Archaic/'
     style_hasmonean_path = style_base_path + 'Hasmonean/'
     style_herodian_path = style_base_path + 'Herodian/'
@@ -140,32 +169,20 @@ if __name__ == '__main__':
 
     # Retrieve img lists from each class' each character AND resize them
     new_size = (40, 40)  # change this to something which is backed up by a reason
-    archaic_imgs = {char:
-                    [cv2.resize(img, new_size).flatten() for img in get_style_char_images(style_archaic_path, char)]
-                    for char in archaic_characters}
-    hasmonean_imgs = {char:
-                    [cv2.resize(img, new_size).flatten() for img in get_style_char_images(style_hasmonean_path, char)]
-                    for char in hasmonean_characters}
-    herodian_imgs = {char:
-                    [cv2.resize(img, new_size).flatten() for img in get_style_char_images(style_herodian_path, char)]
-                    for char in herodian_characters}
 
     print("working")
-    archaic_imgs_unflattened = {char:
+    archaic_imgs = {char:
                     [ cv2.resize(img, new_size) for img in get_style_char_images(style_archaic_path, char)]
                     for char in archaic_characters}
-    hasmonean_imgs_unflattened = {char:
+    hasmonean_imgs = {char:
                     [cv2.resize(img, new_size) for img in get_style_char_images(style_hasmonean_path, char)]
                     for char in hasmonean_characters}
-    herodian_imgs_unflattened = {char:
+    herodian_imgs = {char:
                     [cv2.resize(img, new_size) for img in get_style_char_images(style_herodian_path, char)]
                     for char in herodian_characters}
 
-    #show img
-    #imgplot = plt.imshow(herodian_imgs['Alef'][0])
-    #plt.show()
-
-    img_label = 'Alef'
+    
+    img_label = 'Lamed'
     #get hinge histogram
-    hingehist_archaic,hingehist_hasmonean,hingehist_herodian = get_hinge(img_label,archaic_imgs_unflattened,hasmonean_imgs_unflattened,herodian_imgs_unflattened)
+    hingehist_archaic,hingehist_hasmonean,hingehist_herodian = get_hinge(img_label,archaic_imgs,hasmonean_imgs,herodian_imgs)
 
