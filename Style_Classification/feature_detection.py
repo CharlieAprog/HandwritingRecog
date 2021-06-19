@@ -134,6 +134,78 @@ def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
     archaic_hinge = hinge_main(img_label,archaic_imgs)
     hasmonean_hinge = hinge_main(img_label,hasmonean_imgs)
     herodian_hinge = hinge_main(img_label,herodian_imgs)
+    for images in herodian_imgs[img_label]:
+        cv2.imshow("lll", images)
+        images = cv2.bitwise_not(images)
+        blurred_image = cv2.GaussianBlur(images, (5, 5), 0)
+        Edges = cv2.Canny(blurred_image, 0, 100)
+        thresh = cv2.threshold(images, 30, 255, cv2.THRESH_BINARY)[1]
+        # apply canny to detect the contours of the char
+        corners_of_img = cv2.Canny(thresh, 0, 100)
+        cont_img = np.asarray(corners_of_img)
+        # get the coordinates of the contour pixels
+        contours = np.where(cont_img == 255)
+        list_of_cont_cords = list(zip(contours[0], contours[1]))
+        sorted_cords = sort_cords(list_of_cont_cords)
+        # plot the sorted cords in order just to be sure everything went fine
+        # sorted_coords_animation(sorted_cords)
+        hist = get_histogram(sorted_cords, 2, cont_img)
+        print('hist')
+
+        # hist = remove_redundant_angles(hist)
+        #print("after removal")
+
+
+        # put the angles vals in two lists (needed to get co-occurence)
+        list_phi1 = []
+        list_phi2 = []
+        for instance in hist:
+            list_phi1.append(instance[0])
+            list_phi2.append(instance[1])
+
+        # transform entries in both lists to indices in the correspoding bin
+        hist_phi1 = plt.hist(list_phi1, bins=24, range=[0, 360])
+        # plt.show()
+        bins_phi1 = hist_phi1[1]
+        inds_phi1 = np.digitize(list_phi1, bins_phi1)
+
+        hist_phi2 = plt.hist(list_phi2, bins=24,range=[0, 360])
+        # plt.show()
+        bins_phi2 = hist_phi2[1]
+        inds_phi2 = np.digitize(list_phi2, bins_phi2)
+
+        hinge_features = np.zeros([24, 24], dtype=int)
+        num_features = 0
+        for i in range(len(inds_phi1)):
+            if inds_phi1[i] <= inds_phi2[i]:
+                num_features += 1
+                hinge_features[inds_phi1[i]-1][inds_phi2[i]-1] += 1
+        print(num_features)
+        print(hinge_features)
+
+        feature_vector = []
+        x= 0
+        for j in range(24):
+            feature_vector.append(hinge_features[j][x:])
+            x += 1
+
+        feature_vector = [item for sublist in feature_vector for item in sublist]
+        print(feature_vector, len(feature_vector))
+        print(sum(feature_vector))
+        notalistbitch = np.asarray(feature_vector)
+        massdist = [element/sum(feature_vector) for element in notalistbitch]
+        print(massdist)
+        plt.show()
+        vals = np.arange(0, 300)
+
+
+
+        fig, axs = plt.subplots(2)
+        fig.suptitle('Char image with histogram')
+        axs[0].imshow(corners_of_img)
+        axs[1].plot(vals, massdist)
+        plt.show()
+>>>>>>> f3c1f71db62020ee3584a15abf90431597913909
 
     print(archaic_hinge)
     print(hasmonean_hinge)

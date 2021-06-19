@@ -17,11 +17,10 @@ def extract_line_from_image(image, upper_line, lower_line):
     return img_copy[upper_boundary:lower_boundary, :]
 
 
-def trim_line(line):
+def trim_line(line, line_threshold = 10):
     thresh = threshold_otsu(line)
     line = line > thresh
     vertical_projection = np.sum(line, axis=0)
-    line_threshold = 15
     b1 = 0
     b2 = 0
     beginning = 0
@@ -61,7 +60,7 @@ def trim_line(line):
             break
 
     new_line = line[:, beginning:end]
-    return new_line
+    return new_line.astype(np.uint8)
 
 @timer
 def segment_words(line, vertical_projection):

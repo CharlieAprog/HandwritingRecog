@@ -29,8 +29,10 @@ def load_path(file_name):
     """ Loads a csv formatted path file into a numpy array. """
     return np.loadtxt(file_name, delimiter=',', dtype=int)
 
-def trim_360(image):
-    return trim_line(np.rot90(trim_line(np.rot90(image).astype(int)),axes=(1, 0)).astype(int))
+def trim_360(image, line_thresh = 15):
+    trim1 = trim_line(np.rot90(image).astype(int),line_threshold=line_thresh)
+    trim2 = trim_line(np.rot90(trim1,axes=(1, 0)).astype(int),line_threshold=line_thresh-5)
+    return trim2
 
 # |----------------------------------------------|
 # |    Global variables used by other files      |

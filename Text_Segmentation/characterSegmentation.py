@@ -83,7 +83,7 @@ def get_box_images(box_boundaries, word):
 
 
 def character_segment(word, title=None):
-    cluster_threshold = 7
+    cluster_threshold = 10
     word = word.astype(np.uint8)
     print("Running character segmentation...")
     num_labels, labels = cv2.connectedComponents(word)
@@ -118,6 +118,17 @@ def run_character_segment(words_in_lines):
         segmented_word_box_areas.append(line_word_areas)
         all_box_boundaries.append(box_boundaries_lines)
     return segmented_word_box_images, segmented_word_box_areas, all_box_boundaries
+
+# def single_char_clean(character):
+#     pixels, areas, new_word, box_boundaries = character_segment(character, title="[OLD]")
+#     min_area = 500
+#     max_area = 8000  # anything above 8000 is undoubtedly more than 1 character in any test image
+#     area_thr = lambda img, x: [x for x in img if x > min_area and x < max_area]
+#     boxes_thr = [area_thr(image, None) for image in areas]
+
+   
+    
+
 
 
 def is_boundary_included(all_boundries, cluster):
@@ -193,20 +204,27 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
     return filtered_word_box_images, character_widths
 
 
-def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False):
+def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False, min_cluster = 500, internal_min_cluster = 30):
     img_copy = copy.deepcopy(image)
     num_labels, labels = cv2.connectedComponents(img_copy)
     clusters = getComponentClusters(num_labels, labels)
+
     left_border = img_copy[:, 0]
     right_border = img_copy[:, -1]
     for cluster in clusters:
-        for y, x in cluster:
-            if (x == 0 and left_border[y] and not skip_left_pruning
-                or x == img_copy.shape[1] - 1 and right_border[y] and not skip_right_pruning) \
-                    and img_copy[y, x]:
+        if np.sum(cluster) < min_cluster:
+            for y, x in cluster:
+                if (x == 0 and left_border[y] and not skip_left_pruning
+                    or x == img_copy.shape[1] - 1 and right_border[y] and not skip_right_pruning) \
+                        and img_copy[y, x]:
+                    for y, x in cluster:
+                        img_copy[y, x] = 0
+                    break
+            if np.sum(cluster) < internal_min_cluster:
                 for y, x in cluster:
-                    img_copy[y, x] = 0
-                break
+                    for y, x in cluster:
+                        img_copy[y, x] = 0
+                    break
     #plotSimpleImages([img_copy, image])
     return img_copy
 
