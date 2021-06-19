@@ -1,6 +1,27 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+def noise_removal(img,morphology=False):
+    img = cv2.bitwise_not(img)
+    resized_pad_img = img.copy()
+    # Filter using contour area and remove small noise
+    retval, resized_pad_img = cv2.threshold(resized_pad_img.copy(), thresh=30, maxval=255,
+                                   type=cv2.THRESH_BINARY)
+    cnts, _ = cv2.findContours(resized_pad_img.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    cnt = sorted(cnts, key=cv2.contourArea, reverse=True)
+    # ROI will be object with biggest contour
+    cnt = cnt[1:]
+    mask = np.ones(img.shape[:2], dtype="uint8") * 255
+    for c in cnt:
+        cv2.drawContours(mask, [c], -1, 0, -1)
+    mask = cv2.bitwise_not(mask)
+    newimg = (resized_pad_img - mask) 
+    newimg = cv2.bitwise_not(newimg)
+    if morphology:
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
+        newimg = cv2.morphologyEx(newimg, cv2.MORPH_CLOSE, kernel)
+    return newimg,mask
+
 # finds closest cord based on Manhatten distance with an added prio to the x-direction
 def find_closest_cord(current_cord, contour_cords):
     min_dist = 500
