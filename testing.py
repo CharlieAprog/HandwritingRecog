@@ -39,8 +39,13 @@ for letter in archaic_imgs:
     for example in archaic_imgs[letter]:
         all_archaic.append(example)
 
-for image in  all_archaic:
-    #image = cv2.bitwise_not(image)
+
+def clean_image(image, thresh):
     image = get_binary(image).astype(np.uint8)
-    new = remove_character_artifacts(image, min_cluster= 5000)   
-    plotSimpleImages([image,new], title='somethin')
+    new = remove_character_artifacts(image, min_cluster= thresh)
+    plotSimpleImages([image,new], title='example')
+    
+for image in  all_archaic:
+    clean_image(image, 5000)
+
+
