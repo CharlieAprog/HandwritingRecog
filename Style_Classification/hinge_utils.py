@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
 
 def noise_removal(img,morphology=False):
     img = cv2.bitwise_not(img)

@@ -9,7 +9,6 @@ import sys
 
 PI = 3.14159265359
 
-
 def get_angle(x_origin, y_origin, x_up, y_up):
     output = math.degrees(math.atan2(y_up-y_origin,x_up-x_origin))
 
@@ -34,7 +33,6 @@ def get_histogram(list_of_cont_cords, dist_between_points, img):
         i += dist_between_points
 
         phi1 = get_angle(x_origin, (40-y_origin), x_low, (40-y_low))
-
         phi2 = get_angle(x_origin, (40-y_origin), x_high, (40-y_high))
 
         histogram.append((phi1, phi2))
@@ -53,15 +51,16 @@ def get_histogram(list_of_cont_cords, dist_between_points, img):
 
     return histogram
 
-def hinge_main(img_label,imgs):
+def get_hinge_pdf(img_label,imgs):
+    vals = [i*0 for i in range(300)]
     for images in imgs[img_label]:
             images = cv2.GaussianBlur(images,(5,5),0)
             img,mask = noise_removal(images)
-            fig, axs = plt.subplots(3)
-            axs[0].imshow(images)
-            axs[1].imshow(img)
-            axs[2].imshow(mask)
-            plt.show()
+            # fig, axs = plt.subplots(3)
+            # axs[0].imshow(images)
+            # axs[1].imshow(img)
+            # axs[2].imshow(mask)
+            # plt.show()
             # apply canny to detect the contours of the char
             corners_of_img = cv2.Canny(img, 0, 100)
             cont_img = np.asarray(corners_of_img)
@@ -75,11 +74,8 @@ def hinge_main(img_label,imgs):
             # sorted_coords_animation(sorted_cords)
 
             hist = get_histogram(sorted_cords, 2, cont_img)
-            print(hist)
-            print('-----|----')
             #if phi2>=phi1, remove from hist
             hist = remove_redundant_angles(hist)
-            print(hist)
             # put the angles vals in two lists (needed to get co-occurence)
             list_phi1 = []
             list_phi2 = []
@@ -115,43 +111,34 @@ def hinge_main(img_label,imgs):
                 feature_vector.append(hinge_features[j][x:])
                 x += 1
             feature_vector = [item for sublist in feature_vector for item in sublist]
-            print(feature_vector, len(feature_vector))
-            print(sum(feature_vector))
-            notalistbitch = np.asarray(feature_vector)
-            massdist = [element/sum(feature_vector) for element in notalistbitch]
-            print(massdist)
-            plt.show()
-            vals = np.arange(0, 300)
+            
+            feature_vector = np.asarray(feature_vector)
+            # print('feature vector:')
+            # print(feature_vector)
+            vals = vals+feature_vector
+            # print(vals, len(vals))
+            # print(sum(vals))
+            # fig, axs = plt.subplots(2)
+            # fig.suptitle('Char image with histogram')
+            # axs[0].imshow(corners_of_img)
+            # axs[1].plot(vals, massdist)
+    
+    npvector = np.asarray(vals)
+    massdist = [element/sum(vals) for element in npvector]
 
-            fig, axs = plt.subplots(2)
-            fig.suptitle('Char image with histogram')
-            axs[0].imshow(corners_of_img)
-            axs[1].hist2d(inds_phi1, inds_phi2, bins=[12, 24])
-            plt.show()
-    return  hinge_features
+    return massdist
 
 def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
 
-    archaic_hinge = hinge_main(img_label,archaic_imgs)
-    hasmonean_hinge = hinge_main(img_label,hasmonean_imgs)
-    herodian_hinge = hinge_main(img_label,herodian_imgs)
+    archaic_pdf = get_hinge_pdf(img_label,archaic_imgs)
+    hasmonean_pdf = get_hinge_pdf(img_label,hasmonean_imgs)
+    herodian_pdf = get_hinge_pdf(img_label,herodian_imgs)
 
-    print(archaic_hinge)
-    print(hasmonean_hinge)
-    print(herodian_hinge)
-    return archaic_hinge,hasmonean_hinge,herodian_hinge
+    # print(archaic_pdf)
+    # print(hasmonean_pdf)
+    # print(herodian_pdf)
+    return archaic_pdf,hasmonean_pdf,herodian_pdf
 
-
-
-#---TO-DO:---#
-#1)create def get_textural_feature
-#2) get image, get image l
-# abel from CNN
-#3) create SOM:
-#   3)a)get all specific characters from three periods given the CNN label
-#   4)b) extract allographic and textural features from all these characters
-#   4)c) apply PCA on vectors from 4)b) (if needed)
-#   ..
 
 if __name__ == '__main__':
     # / home / jan / PycharmProjects / HandwritingRecog /
@@ -172,7 +159,6 @@ if __name__ == '__main__':
     # Retrieve img lists from each class' each character AND resize them
     new_size = (40, 40)  # change this to something which is backed up by a reason
 
-    print("working")
     archaic_imgs = {char:
                     [ cv2.resize(img, new_size) for img in get_style_char_images(style_archaic_path, char)]
                     for char in archaic_characters}
@@ -184,7 +170,8 @@ if __name__ == '__main__':
                     for char in herodian_characters}
 
     
-    img_label = 'Lamed'
-    #get hinge histogram
-    hingehist_archaic,hingehist_hasmonean,hingehist_herodian = get_hinge(img_label,archaic_imgs,hasmonean_imgs,herodian_imgs)
+    img_label = 'Alef'
+    #get hinge histogram pdf
+    archaic_pdf,hasmonean_pdf,herodian_pdf = get_hinge(img_label,archaic_imgs,hasmonean_imgs,herodian_imgs)
+    # Style = get_style()
 
