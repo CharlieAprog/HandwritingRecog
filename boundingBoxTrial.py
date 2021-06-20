@@ -3,15 +3,22 @@ from matplotlib.pyplot import plot, title
 import itertools
 import copy
 from Text_Segmentation.plotting import plotSimpleImages, plotGrid
-from Text_Segmentation.lineSegmentation import calc_outlier, timer
+from Text_Segmentation.lineSegmentation import calc_outlier, timer, get_binary
 from Text_Segmentation.plotting import plotSimpleImages
-from Text_Segmentation.characterSegmentation import character_segment, \
-    get_sliding_words, slide_over_word, getComponentClusters, filter_characters, run_character_segment, destructure_characters
+from Text_Segmentation.characterSegmentation import *
 from Text_Segmentation.textSegmentation import text_segment, trim_360
 from Text_Segmentation import *
 from segmentation_to_recog import *
 
-image_num = 11
+image_num = 12
+def clean_image(image, thresh_side=500, thresh_mid=30, trim_thresh= 10):
+    # image = get_binary(image)
+    image = image.astype(np.uint8)
+    new = remove_character_artifacts(image, min_cluster= thresh_side, internal_min_cluster=thresh_mid)
+    if new.size == 0:
+        new = image
+    new = trim_360(new, line_thresh=trim_thresh)
+    return new
 
 #lines = the images of each line of an image
 #words_in_lines = each word in each line of image,
@@ -98,8 +105,7 @@ def select_slides(slides, predicted_char_num, model, window_size):
         print('letter chosen')
         prev_letter_start = temp_letter_start
         start_idx = temp_idx
-
-        recognised_characters.append(chosen_slide)
+        recognised_characters.append(clean_image(chosen_slide))
         labels.append(chosen_label)
         prev_letter_start = 0
     
@@ -107,6 +113,47 @@ def select_slides(slides, predicted_char_num, model, window_size):
     labels.append(last_label)
     return recognised_characters, labels
 
+all_suspected = 0
+changed = 0
+suspect_indices = []
+changed_indices = []
+for char_idx, character_segment in enumerate(characters): 
+    if character_segment.shape[1] > mean_character_width + np.std(character_widths):
+        all_suspected  += 1
+        suspect_indices.append(char_idx)
+        # Run connected components to get number of labels, so merged clusters are identified beforehand
+        character_segment = character_segment.astype(np.uint8)
+        num_labels, clusters = cv2.connectedComponents(character_segment, connectivity=4)
+        # plotSimpleImages([character_segment], title="Original character")
+        clusters = getComponentClusters(num_labels, clusters)
+        box_boundaries = getBoundingBoxBoundaries(character_segment, clusters)
+        # print('number of bounding boxes:', len(box_boundaries))
+        # plotConnectedComponentBoundingBoxes(character_segment, box_boundaries)
+
+        eroded_img_boundaries, eroded_img = erode_clusters(character_segment, kernel=(2,2), iter_num=3)
+        print(num_labels, len(eroded_img_boundaries))
+        plotSimpleImages([eroded_img], title="eroded character")
+        eroded_img_list, _ = get_box_images(eroded_img_boundaries, eroded_img)
+        
+        
+        if len(eroded_img_boundaries) > len(box_boundaries):
+            changed += 1
+            changed_indices.append(char_idx)
+            temp_list = []
+            for img in eroded_img_list:
+                kernel = np.ones((2,2), np.uint8)
+                img = img.astype(np.uint8)
+                if img.size > 0:
+                    dialated_img = cv2.dilate(img, kernel, iterations=3)
+                    temp_list.append(dialated_img)
+            temp_list.append(character_segment)
+            plotSimpleImages(temp_list, title='Dialation and erosion')
+
+for idx in suspect_indices:
+    if idx not in changed_indices:
+        plotSimpleImages([characters[idx]], title="Characters failed to erode")
+
+print(f'all:{all_suspected}, changed:{changed}')
 for char_idx, character_segment in enumerate(characters): 
     if character_segment.shape[1] > mean_character_width + np.std(character_widths): #multiple characters suspected
         print("\nMultiple characters classifictiaon")
@@ -119,22 +166,14 @@ for char_idx, character_segment in enumerate(characters):
         for label in predicted_labels:
             predictions_string = f'{predictions_string}, {list(name2idx.keys())[label]}'
         plotSimpleImages(recognised_characters, title=predictions_string)
-
-
-
-        # for idx, slide in enumerate(sliding_characters):
-        #     predicted_label, probability = get_label_probability(slide, model)
-        #     predicted_letter = list(name2idx.keys())[predicted_label]
-        #     print(f'Predicted label:{predicted_letter} probabilty:{probability}')
-        #     print(f"window: [{shift*idx}-{window_size + shift*idx}]")
-        # print(f'correct last window:[{character_segment.shape[1] - window_size}-{character_segment.shape[1]}]')
-        # plotSimpleImages([character_segment], title=predicted_char_num)
-    # else: # single character
-        # print("\nSingle character classification")
-        # predicted_label, probability = get_label_probability(character_segment, model)
-        # predicted_letter = list(name2idx.keys())[predicted_label]
-        # print(f'Predicted label:{predicted_letter} probabilty:{probability}')
-        # plotSimpleImages([character_segment], title=f'{predicted_label+1}:{predicted_letter}')
+        
+    else: # single character
+        print("\nSingle character classification")
+        character_segment = clean_image(character_segment, thresh_side=50000)
+        predicted_label, probability = get_label_probability(character_segment, model)
+        predicted_letter = list(name2idx.keys())[predicted_label]
+        print(f'Predicted label:{predicted_letter} probabilty:{probability}')
+        plotSimpleImages([character_segment], title=f'{predicted_label+1}:{predicted_letter}')
 
             
 
