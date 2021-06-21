@@ -91,6 +91,7 @@ def erode_clusters(word, kernel=(4,4), iter_num=1):
     plotConnectedComponentBoundingBoxes(word, box_boundaries)
     return box_boundaries, word
 
+
 def character_segment(word, title=None):
     cluster_threshold = 10
     word = word.astype(np.uint8)
@@ -137,10 +138,6 @@ def run_character_segment(words_in_lines):
 #     area_thr = lambda img, x: [x for x in img if x > min_area and x < max_area]
 #     boxes_thr = [area_thr(image, None) for image in areas]
 
-   
-    
-
-
 
 def is_boundary_included(all_boundries, cluster):
     x_min_input = cluster[1][0]
@@ -161,10 +158,7 @@ def is_image_border_active(character):
     return False
 
 
-def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_box_boundaries, words_in_lines):
-    """
-    Returns those images that are supposedly not artifacts.
-    """
+def get_character_area_outlier(segmented_word_box_areas):
     # Empirically observed values
     min_area = 500
     max_area = 8000  # anything above 8000 is undoubtedly more than 1 character in any test image
@@ -173,10 +167,19 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
     boxes_thr = [[area_thr(image, None) for image in line if area_thr(image, None) != []] for line in
                  segmented_word_box_areas]
     flat_boxes_thr = list(itertools.chain(*list(itertools.chain(*boxes_thr))))
-
     # Filter artifacts that are still small, but large enough to be mistaken for words, where filtering is based on
     # the average word size of the current document
     outlier_thr = calc_outlier(flat_boxes_thr)
+    return outlier_thr
+
+
+def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_box_boundaries, words_in_lines):
+    """
+    Returns those images that are supposedly not artifacts.
+    """
+
+    outlier_thr = get_character_area_outlier(segmented_word_box_areas)
+
     filtered_word_box_images = []
     character_widths = []
     for i, line in enumerate(segmented_word_box_images):
@@ -211,11 +214,37 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
                     line_list.append(word_list)
         if line_list != []:
             filtered_word_box_images.append(line_list)
-
     return filtered_word_box_images, character_widths
 
 
-def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False, min_cluster = 500, internal_min_cluster = 30):
+def filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_box_img_list, eroded_box_boundaries, eroded_img):
+    outlier_thr = get_character_area_outlier(segmented_word_box_areas)
+    filtered_images = []
+    for i, image in enumerate(eroded_box_img_list):
+        if image.size != 0:
+            skip_left_pruning = False
+            skip_right_pruning = False
+            if eroded_box_areas[i] >= outlier_thr:
+                boundary = eroded_box_boundaries[i]
+                if not is_boundary_included(eroded_box_boundaries, boundary):
+                    x_min = boundary[1][0]
+                    x_max = boundary[1][1]
+                    taller_cluster = eroded_img[:, x_min - 1:x_max + 1]
+                    if x_min == 0:
+                        skip_left_pruning = True
+                    if x_max == eroded_img.shape[1]:
+                        skip_right_pruning = True
+                    if taller_cluster != []:
+                        if is_image_border_active(taller_cluster):
+                            filtered_images.append(trim_360(remove_character_artifacts(image, skip_left_pruning,
+                                                                        skip_right_pruning)))
+                        else:
+                            filtered_images.append(trim_360(remove_character_artifacts(taller_cluster, skip_left_pruning,
+                                                                        skip_right_pruning)))
+    return filtered_images
+
+
+def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False, min_cluster=500, internal_min_cluster=30):
     img_copy = copy.deepcopy(image)
     num_labels, labels = cv2.connectedComponents(img_copy, connectivity=4)
     clusters = getComponentClusters(num_labels, labels)
@@ -257,4 +286,4 @@ def destructure_characters(characters_in_line):
     return characters
 
 
-        
+
