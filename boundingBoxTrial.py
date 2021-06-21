@@ -10,7 +10,7 @@ from Text_Segmentation.textSegmentation import text_segment, trim_360
 from Text_Segmentation import *
 from segmentation_to_recog import *
 
-image_num = 12
+image_num = 8
 
 
 def clean_image(image, thresh_side=500, thresh_mid=30, trim_thresh=10):
@@ -48,7 +48,8 @@ filtered_word_box_images_all_lines, character_widths = filter_characters(segment
 # |              CHARACTER RECOGNITION                  |
 # |-----------------------------------------------------|
 characters = destructure_characters(filtered_word_box_images_all_lines)
-mean_character_width = np.mean(character_widths)
+single_character_widths = [width for width in character_widths if width <= 120]
+mean_character_width = np.mean(single_character_widths)
 model = TheRecognizer()
 model.load_model(model.load_checkpoint('40_char_rec.ckpt', map_location=torch.device('cpu')))
 print(mean_character_width + np.std(character_widths))
@@ -119,8 +120,9 @@ all_suspected = 0
 changed = 0
 suspect_indices = []
 changed_indices = []
+characters_eroded = []
 for char_idx, character_segment in enumerate(characters):
-    if character_segment.shape[1] > mean_character_width + np.std(character_widths):
+    if character_segment.shape[1] > mean_character_width + np.std(single_character_widths):
         all_suspected += 1
         suspect_indices.append(char_idx)
         # Run connected components to get number of labels, so merged clusters are identified beforehand
@@ -135,7 +137,6 @@ for char_idx, character_segment in enumerate(characters):
         eroded_box_img_list, eroded_box_areas = get_box_images(eroded_img_boundaries, eroded_img)
         filtered_eroded_box_img_list = filter_eroded_characters(segmented_word_box_areas, eroded_box_areas,
                                                                 eroded_box_img_list, eroded_img_boundaries, eroded_img)
-
         if len(eroded_img_boundaries) > len(box_boundaries):
             changed += 1
             changed_indices.append(char_idx)
@@ -145,17 +146,20 @@ for char_idx, character_segment in enumerate(characters):
                 img = img.astype(np.uint8)
                 if img.size > 0:
                     dialated_img = cv2.dilate(img, kernel, iterations=3)
+                    characters_eroded.append(dialated_img)
                     temp_list.append(dialated_img)
             temp_list.append(character_segment)
-            plotSimpleImages(temp_list, title='Dialation and erosion')
+            # plotSimpleImages(temp_list, title='Dialation and erosion')
+    else:
+        characters_eroded.append(character_segment)
 
-for idx in suspect_indices:
-    if idx not in changed_indices:
-        plotSimpleImages([characters[idx]], title="Characters failed to erode")
+# for idx in suspect_indices:
+#     if idx not in changed_indices:
+#         plotSimpleImages([characters[idx]], title="Characters failed to erode")
 
 print(f'all:{all_suspected}, changed:{changed}')
-for char_idx, character_segment in enumerate(characters):
-    if character_segment.shape[1] > mean_character_width + np.std(character_widths):  # multiple characters suspected
+for char_idx, character_segment in enumerate(characters_eroded):
+    if character_segment.shape[1] > mean_character_width + np.std(single_character_widths):  # multiple characters suspected
         print("\nMultiple characters classifictiaon")
         predicted_char_num = round(character_segment.shape[1] / mean_character_width)
         predicted_char_num_string = f'predicted number of characters:{predicted_char_num}'
@@ -179,71 +183,3 @@ for char_idx, character_segment in enumerate(characters):
     # predicted_letter = list(name2idx.keys())[predicted_label]
     # print(f'Predicted label:{predicted_letter} probabilty:{probability}')
     # print(f"window: [{shift*idx}-{window_size + shift*idx}]")
-
-# label, prob_bounding_box = get_label_probability(words_in_lines[0][1], model)
-# print(label, prob_bounding_box)
-
-# for i, line in enumerate(sliding_words):
-#     for j, word in enumerate(line):
-#         for slide in word:
-#             slide = slide.astype(np.uint8)
-#             label, prob_bounding_box = get_label_probability(slide, model)
-#             print(label, prob_bounding_box)
-#         plotSimpleImages(word)
-exit()
-
-lines, words_in_lines = text_segment(image_num)
-# sliding_words = get_sliding_words(words_in_lines,window_size, shift)
-# plotSimpleImages(lines)
-# character_widths = []
-# characters = []
-# for line_idx in range(len(words_in_lines)):
-#     for word_idx in range(len(words_in_lines[line_idx])):
-#         word_image = words_in_lines[line_idx][word_idx]
-#         word_box_images, new_word_image = character_segment(word_image) # list of numpy array (images)
-#         words_in_lines[line_idx][word_idx] = new_word_image
-#         for character in word_box_images:
-#             if character.size > 0:
-#                 characters.append(character)
-#                 character_widths.append(len(character[0,:]))
-# mean_character_width = np.mean(character_widths)
-
-
-# plotSimpleImages(lines)
-# plotSimpleImages(sliding_words[2][0])
-# plotSimpleImages(sliding_words[2][2])
-# print(words_in_lines)
-# print(len(words_in_lines[0]))
-# print(len(words_in_lines[0][0]))
-# for line in range(len(words_in_lines[0])):
-#     for word in words_in_lines[0]:
-#         plotSimpleImages([word])
-#         plotSimpleImages([words_in_lines[0][0]])
-#         word_boxes_img = character_segment(word)
-#         plotSimpleImages(word_boxes_img)
-# word_img =
-# box_img =
-# bounding_box_cords = x, y
-
-# for img in word_box_images:
-#     label, prob_bounding_box = get_label_probability(img, model)
-#     print(idx2name[int(label)])
-#     print(label, prob_bounding_box)
-#     dim = img.shape
-#     print(dim)
-#     images = slide_over_word(img, 30, 10)
-#     plotSimpleImages(images)
-# plotSimpleImages(word_box_images)
-
-all_words = [word for line in words_in_lines for word in line]
-print(all_words[0])
-for word in all_words:
-    plotSimpleImages([word])
-
-# plotSimpleImages(sliding_words[2][2])
-#
-# for slide in sliding_words[2][2]:
-#     slide = slide.astype(np.uint8)
-#
-#     label, prob_bounding_box = get_label_probability(slide, model)
-#     print(label, prob_bounding_box)

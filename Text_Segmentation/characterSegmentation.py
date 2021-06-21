@@ -82,13 +82,14 @@ def get_box_images(box_boundaries, word):
         box_images.append(box_img)
     return box_images, box_areas
 
+
 def erode_clusters(word, kernel=(4,4), iter_num=1):
     kernel = np.ones((4, 4), np.uint8)
     word = cv2.erode(word, kernel, iterations=iter_num)
     num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
     clusters = getComponentClusters(num_labels, clusters)
     box_boundaries = getBoundingBoxBoundaries(word, clusters)
-    plotConnectedComponentBoundingBoxes(word, box_boundaries)
+    # plotConnectedComponentBoundingBoxes(word, box_boundaries)
     return box_boundaries, word
 
 
