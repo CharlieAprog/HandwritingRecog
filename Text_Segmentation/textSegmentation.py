@@ -18,7 +18,6 @@ def save_path(path, file_name):
         for row in path:
             csvwriter.writerow(row)
 
-
 def get_key(fp):
     filename = os.path.splitext(os.path.basename(fp))[0]
     int_part = filename.split('_')[1]
@@ -31,7 +30,7 @@ def load_path(file_name):
 
 def trim_360(image, line_thresh = 15):
     trim1 = trim_line(np.rot90(image).astype(int),line_threshold=line_thresh)
-    trim2 = trim_line(np.rot90(trim1,axes=(1, 0)).astype(int),line_threshold=line_thresh-5)
+    trim2 = trim_line(np.rot90(trim1,axes=(1, 0)).astype(int), line_threshold=line_thresh-5)
     return trim2
 
 # |----------------------------------------------|

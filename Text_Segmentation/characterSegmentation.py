@@ -3,6 +3,7 @@ from Text_Segmentation.textSegmentation import calc_outlier
 from Text_Segmentation.textSegmentation import trim_360
 import itertools
 import copy
+from typing import List
 
 
 def slide_over_word(word, window_size, shift):
@@ -34,7 +35,7 @@ def getComponentClusters(num_labels, labels):
     return clusters
 
 
-def getBoundingBoxBoundaries(image, clusters):
+def getBoundingBoxBoundaries(image, clusters) -> List[List[list]]:
     box_boundaries = []
     for idx, cluster in enumerate(clusters):
         # initialize starting values
@@ -57,11 +58,11 @@ def getBoundingBoxBoundaries(image, clusters):
     return box_boundaries
 
 
-def dialate_clusters(num_boxes, word):
-    kernel = np.ones((5, 3), np.uint8)
+def dialate_clusters(word, kernel=(5,3)):
+    kernel = np.ones(kernel, np.uint8)
     word = cv2.dilate(word, kernel, iterations=1)
-    num_labels, labels = cv2.connectedComponents(word)
-    clusters = getComponentClusters(num_labels, labels)
+    num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
+    clusters = getComponentClusters(num_labels, clusters)
     box_boundaries = getBoundingBoxBoundaries(word, clusters)
     # plotConnectedComponentBoundingBoxes(word, box_boundaries)
     return box_boundaries, word
@@ -81,19 +82,29 @@ def get_box_images(box_boundaries, word):
         box_images.append(box_img)
     return box_images, box_areas
 
+def erode_clusters(word, kernel=(4,4), iter_num=1):
+    kernel = np.ones((4, 4), np.uint8)
+    word = cv2.erode(word, kernel, iterations=iter_num)
+    num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
+    clusters = getComponentClusters(num_labels, clusters)
+    box_boundaries = getBoundingBoxBoundaries(word, clusters)
+    plotConnectedComponentBoundingBoxes(word, box_boundaries)
+    return box_boundaries, word
 
 def character_segment(word, title=None):
     cluster_threshold = 10
     word = word.astype(np.uint8)
     print("Running character segmentation...")
-    num_labels, labels = cv2.connectedComponents(word)
-    clusters = getComponentClusters(num_labels, labels)
+    num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
+    clusters = getComponentClusters(num_labels, clusters)
     box_boundaries = getBoundingBoxBoundaries(word, clusters)
     num_boxes = len(box_boundaries)
     while num_boxes > cluster_threshold:
-        box_boundaries, word = dialate_clusters(num_boxes, word)
+        box_boundaries, word = dialate_clusters(word)
         num_boxes = len(box_boundaries)
         print(num_boxes)
+    #erosion, character segment, dialate clusters
+    
     box_images, box_areas = get_box_images(box_boundaries, word)
     # plotConnectedComponentBoundingBoxes(word, box_boundaries, title = title)
     print("Character segmentation complete.")
@@ -206,26 +217,34 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
 
 def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False, min_cluster = 500, internal_min_cluster = 30):
     img_copy = copy.deepcopy(image)
-    num_labels, labels = cv2.connectedComponents(img_copy)
+    num_labels, labels = cv2.connectedComponents(img_copy, connectivity=4)
     clusters = getComponentClusters(num_labels, labels)
-
-    left_border = img_copy[:, 0]
-    right_border = img_copy[:, -1]
+    sizes = []
+    # print('----')
     for cluster in clusters:
-        if np.sum(cluster) < min_cluster:
-            for y, x in cluster:
-                if (x == 0 and left_border[y] and not skip_left_pruning
-                    or x == img_copy.shape[1] - 1 and right_border[y] and not skip_right_pruning) \
-                        and img_copy[y, x]:
-                    for y, x in cluster:
-                        img_copy[y, x] = 0
-                    break
-            if np.sum(cluster) < internal_min_cluster:
+        # print(np.sum(cluster))
+        sizes.append(np.sum(cluster))
+    # print('----')
+
+    min_cluster = np.mean(sizes)
+    if len(clusters) > 1:
+        left_border = img_copy[:, 0]
+        right_border = img_copy[:, -1]
+        for cluster in clusters:
+            if np.sum(cluster) < min_cluster:
                 for y, x in cluster:
+                    if (x == 0 and left_border[y] and not skip_left_pruning
+                        or x == img_copy.shape[1] - 1 and right_border[y] and not skip_right_pruning) \
+                            and img_copy[y, x]:
+                        for y, x in cluster:
+                            img_copy[y, x] = 0
+                        break
+                if np.sum(cluster) < internal_min_cluster:
                     for y, x in cluster:
-                        img_copy[y, x] = 0
-                    break
-    #plotSimpleImages([img_copy, image])
+                        for y, x in cluster:
+                            img_copy[y, x] = 0
+                        break
+        #plotSimpleImages([img_copy, image])
     return img_copy
 
 def destructure_characters(characters_in_line):
