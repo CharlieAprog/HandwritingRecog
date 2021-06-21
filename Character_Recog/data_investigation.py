@@ -10,8 +10,8 @@ import re
 from pathlib import Path
 import os
 import uuid
-#import splitfolders
-#import imutils
+import splitfolders
+import imutils
 
 # input: path to some image data
 # output: print size stats of the images
@@ -180,7 +180,7 @@ def boundingboxcrop(img_name):
 #input: data_path where preprocessed data are
 #output: data are split into 80-20 training testing split
 def dataset_split(data_path):
-    splitfolders.ratio(data_path, output="binarized_monkbrill_split_40x40", seed=1337, ratio=(0.8, 0.2))
+    splitfolders.ratio(data_path, output="final_char_data", seed=1337, ratio=(0.8, 0.2))
 
 def noise_removal_grayscale(gray):
     graygray=gray.copy()
