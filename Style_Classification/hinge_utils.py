@@ -62,13 +62,20 @@ def sort_cords(contour_cords):
         current_cord = closest_cord
     return sorted_list
 
+def get_chisquared(feature_vector,style_pdf):
+    chi = 0
+    for i in range(len(feature_vector)):
+        if feature_vector[i] == 0 and style_pdf[i] == 0 :
+            continue
+        chi += (feature_vector[i]-style_pdf[i])**2 / (feature_vector[i]+style_pdf[i])
+    return chi/2
+    
+
 # remove all occurences where phi2 < phi1
 def remove_redundant_angles(hist):
-    print(len(hist))
     for instance in hist:
         if instance[0] <= instance[1]:
             hist.remove(instance)
-    print(len(hist))
     return hist
 
 def sorted_coords_animation(sorted_cords, hinge_coords=None):

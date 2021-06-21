@@ -6,7 +6,8 @@ from hinge_utils import *
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-
+from scipy import stats
+from sklearn.decomposition import PCA
 PI = 3.14159265359
 
 def get_angle(x_origin, y_origin, x_up, y_up):
@@ -73,7 +74,7 @@ def get_hinge_pdf(img_label,imgs):
             # plot the sorted cords in order just to be sure everything went fine
             # sorted_coords_animation(sorted_cords)
 
-            hist = get_histogram(sorted_cords, 2, cont_img)
+            hist = get_histogram(sorted_cords, 5, cont_img)
             #if phi2>=phi1, remove from hist
             hist = remove_redundant_angles(hist)
             # put the angles vals in two lists (needed to get co-occurence)
@@ -102,8 +103,6 @@ def get_hinge_pdf(img_label,imgs):
                 if inds_phi1[i] <= inds_phi2[i]:
                     num_features += 1
                     hinge_features[inds_phi1[i]-1][inds_phi2[i]-1] += 1
-            print(num_features,'num_features')
-            print(hinge_features,'hinge_features')
 
             feature_vector = []
             x= 0
@@ -128,17 +127,136 @@ def get_hinge_pdf(img_label,imgs):
 
     return massdist
 
-def get_hinge(img_label, archaic_imgs, hasmonean_imgs, herodian_imgs):
 
-    archaic_pdf = get_hinge_pdf(img_label,archaic_imgs)
-    hasmonean_pdf = get_hinge_pdf(img_label,hasmonean_imgs)
-    herodian_pdf = get_hinge_pdf(img_label,herodian_imgs)
+def get_char_vector(img):
+    image= cv2.GaussianBlur(img,(5,5),0)
+    img,mask = noise_removal(image)
+    # fig, axs = plt.subplots(3)
+    # axs[0].imshow(images)
+    # axs[1].imshow(img)
+    # axs[2].imshow(mask)
+    # plt.show()
+    # apply canny to detect the contours of the char
+    corners_of_img = cv2.Canny(img, 0, 100)
+    cont_img = np.asarray(corners_of_img)
 
-    # print(archaic_pdf)
-    # print(hasmonean_pdf)
-    # print(herodian_pdf)
-    return archaic_pdf,hasmonean_pdf,herodian_pdf
+    # get the coordinates of the contour pixels
+    contours = np.where(cont_img == 255)
+    list_of_cont_cords = list(zip(contours[0], contours[1]))
+    sorted_cords = sort_cords(list_of_cont_cords)
 
+    # plot the sorted cords in order just to be sure everything went fine
+    # sorted_coords_animation(sorted_cords)
+
+    hist = get_histogram(sorted_cords, 5, cont_img)
+    #if phi2>=phi1, remove from hist
+    hist = remove_redundant_angles(hist)
+    # put the angles vals in two lists (needed to get co-occurence)
+    list_phi1 = []
+    list_phi2 = []
+    for instance in hist:
+        list_phi1.append(instance[0])
+        list_phi2.append(instance[1])
+
+    # transform entries in both lists to indices in the correspoding bin
+    hist_phi1 = plt.hist(list_phi1, bins=24, range=[0, 360])
+    bins_phi1 = hist_phi1[1]
+    inds_phi1 = np.digitize(list_phi1, bins_phi1)
+    hist_phi2 = plt.hist(list_phi2, bins=24,range=[0, 360])
+    bins_phi2 = hist_phi2[1]
+    inds_phi2 = np.digitize(list_phi2, bins_phi2)
+
+    hinge_features = np.zeros([24, 24], dtype=int)
+            
+    num_features = 0
+    for i in range(len(inds_phi1)):
+        if inds_phi1[i] <= inds_phi2[i]:
+            num_features += 1
+            hinge_features[inds_phi1[i]-1][inds_phi2[i]-1] += 1
+    feature_vector = []
+    x= 0
+    for j in range(24):
+        feature_vector.append(hinge_features[j][x:])
+        x += 1
+    feature_vector = [item for sublist in feature_vector for item in sublist]
+    feature_vector = np.asarray(feature_vector)
+    return [element/sum(feature_vector) for element in feature_vector]
+
+def get_accuracy_alldata(dataset,archaic_imgs,hasmonean_imgs,herodian_imgs):
+    ##Get accuracy of style classification on dataset
+    cor = 0
+    count =0 
+    for stylename,styledataset in dataset.items():
+        for label,characterset in styledataset.items():
+            if (label == 'Tet' or label == 'Tsadi-final' or label == 'Nun-medial' or label == 'Mem-medial'
+                or label == 'Pe-final' or label == 'Zayin' or label == 'Tsadi-medial'):
+                hasmonean_pdf = get_hinge_pdf(label,hasmonean_imgs)
+                herodian_pdf = get_hinge_pdf(label,herodian_imgs)
+                for image in characterset:
+                    feature_vector = get_char_vector(image)
+                    
+                    chihasmonean = get_chisquared(feature_vector,hasmonean_pdf)
+                    chiherodian = get_chisquared(feature_vector,herodian_pdf)
+                    minchi = min(chihasmonean,chiherodian)
+                    
+                    if stylename == 'hasmonean' and minchi == chihasmonean:
+                        cor+=1
+                    if stylename =='herodian' and minchi == chiherodian:
+                        cor+=1
+                    
+                    if minchi == chihasmonean:
+                        predicted = 'hasmonean'
+                    if minchi ==chiherodian:
+                        predicted = 'herodian'
+                    if stylename != predicted :
+                        print(' wrong classification')
+                        print('true:',stylename)
+                        print('label:',label)
+                        print('predicted:',predicted)
+            else:
+
+                archaic_pdf = get_hinge_pdf(label,archaic_imgs)
+                hasmonean_pdf = get_hinge_pdf(label,hasmonean_imgs)
+                herodian_pdf = get_hinge_pdf(label,herodian_imgs)
+
+                for image in characterset:
+                    feature_vector = get_char_vector(image)
+                    
+                    chiarchaic = get_chisquared(feature_vector,archaic_pdf)
+                    chihasmonean = get_chisquared(feature_vector,hasmonean_pdf)
+                    chiherodian = get_chisquared(feature_vector,herodian_pdf)
+
+                    minchi = min(chihasmonean,chiherodian,chiarchaic)
+                    
+                    if stylename == 'archaic' and minchi == chiarchaic :
+                        cor+=1
+                    if stylename == 'hasmonean' and minchi == chihasmonean:
+                        cor+=1
+                    if stylename =='herodian' and minchi == chiherodian:
+                        cor+=1
+                    
+                    if minchi == chiarchaic:
+                        predicted ='archaic'
+                    if minchi == chihasmonean:
+                        predicted = 'hasmonean'
+                    if minchi ==chiherodian:
+                        predicted = 'herodian'
+                    if stylename != predicted:
+                        print(' Wrong classification')
+                        print('true:',stylename)
+                        print('label:',label)
+                        print('predicted:',predicted)
+
+    count = 0
+    for stylename,styledataset in dataset.items():
+        for label,characterset in styledataset.items():
+            for image in characterset:
+                count+=1
+    
+   
+    print('---',count)
+    print('Total accuracy:',( cor / count))
+        
 
 if __name__ == '__main__':
     # / home / jan / PycharmProjects / HandwritingRecog /
@@ -149,15 +267,17 @@ if __name__ == '__main__':
 
     archaic_characters = ['Taw', 'Pe', 'Kaf-final', 'Lamed', 'Nun-final', 'He', 'Qof', 'Kaf', 'Samekh', 'Yod', 'Dalet',
                         'Waw', 'Ayin', 'Mem', 'Gimel', 'Bet', 'Shin', 'Resh', 'Alef', 'Het']
+
     hasmonean_characters = ['Taw', 'Pe', 'Kaf-final', 'Lamed', 'Tet', 'Nun-final', 'Tsadi-final', 'He', 'Qof', 'Kaf',
                             'Samekh', 'Yod', 'Dalet', 'Waw', 'Ayin', 'Mem-medial', 'Nun-medial', 'Mem', 'Pe-final', 'Gimel',
                             'Bet', 'Shin', 'Resh', 'Zayin', 'Alef', 'Tsadi-medial', 'Het']
+
     herodian_characters = ['Taw', 'Pe', 'Kaf-final', 'Lamed', 'Tet', 'Nun-final', 'Tsadi-final', 'He', 'Qof', 'Kaf',
                         'Samekh', 'Yod', 'Dalet', 'Waw', 'Ayin', 'Mem-medial', 'Nun-medial', 'Mem', 'Pe-final', 'Gimel',
                         'Bet', 'Shin', 'Resh', 'Zayin', 'Alef', 'Tsadi-medial', 'Het']
 
     # Retrieve img lists from each class' each character AND resize them
-    new_size = (40, 40)  # change this to something which is backed up by a reason
+    new_size = (50, 50)  # change this to something which is backed up by a reason
 
     archaic_imgs = {char:
                     [ cv2.resize(img, new_size) for img in get_style_char_images(style_archaic_path, char)]
@@ -169,9 +289,20 @@ if __name__ == '__main__':
                     [cv2.resize(img, new_size) for img in get_style_char_images(style_herodian_path, char)]
                     for char in herodian_characters}
 
-    
-    img_label = 'Alef'
-    #get hinge histogram pdf
-    archaic_pdf,hasmonean_pdf,herodian_pdf = get_hinge(img_label,archaic_imgs,hasmonean_imgs,herodian_imgs)
-    # Style = get_style()
+    style_base_path = 'C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/data/Style_classification/'
+    style_archaic_path = style_base_path + 'Archaic/'
+    style_hasmonean_path = style_base_path + 'Hasmonean/'
+    style_herodian_path = style_base_path + 'Herodian/'
 
+    archaic_nomorph = {char:
+                    [ cv2.resize(img, new_size) for img in get_style_char_images(style_archaic_path, char)]
+                    for char in archaic_characters}
+    hasmonean_nomorph = {char:
+                    [cv2.resize(img, new_size) for img in get_style_char_images(style_hasmonean_path, char)]
+                    for char in hasmonean_characters}
+    herodian_nomorph = {char:
+                    [cv2.resize(img, new_size) for img in get_style_char_images(style_herodian_path, char)]
+                    for char in herodian_characters}
+        
+    dataset = {'archaic':archaic_nomorph,'hasmonean':hasmonean_nomorph,'herodian':herodian_nomorph}
+    get_accuracy_alldata(dataset,archaic_nomorph,hasmonean_nomorph,herodian_nomorph)
