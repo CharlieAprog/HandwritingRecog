@@ -12,7 +12,7 @@ def slide_over_word(word, window_size, shift):
     for snap in range(0, width - window_size, shift):
         images.append(word[:, snap:snap + window_size])
         # plotSimpleImages([word[:, snap:snap + window_size]])
-    images.append(word[:, word.shape[1] - window_size : word.shape[1]])
+    images.append(word[:, word.shape[1] - window_size: word.shape[1]])
     return images
 
 
@@ -26,7 +26,7 @@ def get_sliding_words(words_in_lines, window_size, shift):
     return sliding_words_in_line
 
 
-def getComponentClusters(num_labels, labels):
+def get_component_clusters(num_labels, labels):
     clusters = [[] for _ in range(num_labels)]
     for row_idx, row in enumerate(labels):
         for col_idx, col in enumerate(row):
@@ -35,7 +35,7 @@ def getComponentClusters(num_labels, labels):
     return clusters
 
 
-def getBoundingBoxBoundaries(image, clusters) -> List[List[list]]:
+def get_bounding_box_boundaries(image, clusters) -> List[List[list]]:
     box_boundaries = []
     for idx, cluster in enumerate(clusters):
         # initialize starting values
@@ -58,12 +58,12 @@ def getBoundingBoxBoundaries(image, clusters) -> List[List[list]]:
     return box_boundaries
 
 
-def dialate_clusters(word, kernel=(5,3)):
+def dialate_clusters(word, kernel=(5, 3)):
     kernel = np.ones(kernel, np.uint8)
     word = cv2.dilate(word, kernel, iterations=1)
     num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
-    clusters = getComponentClusters(num_labels, clusters)
-    box_boundaries = getBoundingBoxBoundaries(word, clusters)
+    clusters = get_component_clusters(num_labels, clusters)
+    box_boundaries = get_bounding_box_boundaries(word, clusters)
     # plotConnectedComponentBoundingBoxes(word, box_boundaries)
     return box_boundaries, word
 
@@ -83,12 +83,12 @@ def get_box_images(box_boundaries, word):
     return box_images, box_areas
 
 
-def erode_clusters(word, kernel=(4,4), iter_num=1):
+def erode_clusters(word, kernel=(4, 4), iter_num=1):
     kernel = np.ones((4, 4), np.uint8)
     word = cv2.erode(word, kernel, iterations=iter_num)
     num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
-    clusters = getComponentClusters(num_labels, clusters)
-    box_boundaries = getBoundingBoxBoundaries(word, clusters)
+    clusters = get_component_clusters(num_labels, clusters)
+    box_boundaries = get_bounding_box_boundaries(word, clusters)
     # plotConnectedComponentBoundingBoxes(word, box_boundaries)
     return box_boundaries, word
 
@@ -98,15 +98,15 @@ def character_segment(word, title=None):
     word = word.astype(np.uint8)
     print("Running character segmentation...")
     num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
-    clusters = getComponentClusters(num_labels, clusters)
-    box_boundaries = getBoundingBoxBoundaries(word, clusters)
+    clusters = get_component_clusters(num_labels, clusters)
+    box_boundaries = get_bounding_box_boundaries(word, clusters)
     num_boxes = len(box_boundaries)
     while num_boxes > cluster_threshold:
         box_boundaries, word = dialate_clusters(word)
         num_boxes = len(box_boundaries)
         print(num_boxes)
-    #erosion, character segment, dialate clusters
-    
+    # erosion, character segment, dialate clusters
+
     box_images, box_areas = get_box_images(box_boundaries, word)
     # plotConnectedComponentBoundingBoxes(word, box_boundaries, title = title)
     print("Character segmentation complete.")
@@ -131,6 +131,7 @@ def run_character_segment(words_in_lines):
         segmented_word_box_areas.append(line_word_areas)
         all_box_boundaries.append(box_boundaries_lines)
     return segmented_word_box_images, segmented_word_box_areas, all_box_boundaries
+
 
 # def single_char_clean(character):
 #     pixels, areas, new_word, box_boundaries = character_segment(character, title="[OLD]")
@@ -205,11 +206,13 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
                                     skip_right_pruning = True
                                 if taller_cluster != []:
                                     if is_image_border_active(taller_cluster):
-                                        word_list.append(trim_360(remove_character_artifacts(character, skip_left_pruning,
-                                                                                    skip_right_pruning)))
+                                        word_list.append(
+                                            trim_360(remove_character_artifacts(character, skip_left_pruning,
+                                                                                skip_right_pruning)))
                                     else:
-                                        word_list.append(trim_360(remove_character_artifacts(taller_cluster, skip_left_pruning,
-                                                                                    skip_right_pruning)))
+                                        word_list.append(
+                                            trim_360(remove_character_artifacts(taller_cluster, skip_left_pruning,
+                                                                                skip_right_pruning)))
                                     character_widths.append(word_list[-1].shape[1])
                 if word_list != []:
                     line_list.append(word_list)
@@ -218,7 +221,8 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
     return filtered_word_box_images, character_widths
 
 
-def filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_box_img_list, eroded_box_boundaries, eroded_img):
+def filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_box_img_list, eroded_box_boundaries,
+                             eroded_img):
     outlier_thr = get_character_area_outlier(segmented_word_box_areas)
     filtered_images = []
     for i, image in enumerate(eroded_box_img_list):
@@ -238,17 +242,19 @@ def filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_
                     if taller_cluster != []:
                         if is_image_border_active(taller_cluster):
                             filtered_images.append(trim_360(remove_character_artifacts(image, skip_left_pruning,
-                                                                        skip_right_pruning)))
+                                                                                       skip_right_pruning)))
                         else:
-                            filtered_images.append(trim_360(remove_character_artifacts(taller_cluster, skip_left_pruning,
-                                                                        skip_right_pruning)))
+                            filtered_images.append(
+                                trim_360(remove_character_artifacts(taller_cluster, skip_left_pruning,
+                                                                    skip_right_pruning)))
     return filtered_images
 
 
-def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False, min_cluster=500, internal_min_cluster=30):
+def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False, min_cluster=500,
+                               internal_min_cluster=30):
     img_copy = copy.deepcopy(image)
     num_labels, labels = cv2.connectedComponents(img_copy, connectivity=4)
-    clusters = getComponentClusters(num_labels, labels)
+    clusters = get_component_clusters(num_labels, labels)
     sizes = []
     # print('----')
     for cluster in clusters:
@@ -274,8 +280,9 @@ def remove_character_artifacts(image, skip_left_pruning=False, skip_right_prunin
                         for y, x in cluster:
                             img_copy[y, x] = 0
                         break
-        #plotSimpleImages([img_copy, image])
+        # plotSimpleImages([img_copy, image])
     return img_copy
+
 
 def destructure_characters(characters_in_line):
     characters = []
@@ -285,6 +292,3 @@ def destructure_characters(characters_in_line):
                 characters.append(character.astype(int))
 
     return characters
-
-
-

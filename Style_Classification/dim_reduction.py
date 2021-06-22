@@ -14,7 +14,7 @@ def get_style_char_images(style_path: str, character: str):
     list_for_glob = style_path + character + '/*.jpg'
     img_name_list = glob.glob(list_for_glob)
     img_list = [cv2.imread(img, 0) for img in img_name_list]
-    assert len(img_list) > 0, "Trying to read image files while being in a wrong folder. Cd into 'Style_Classification'."
+    assert len(img_list) > 0, "Trying to read image files while being in a wrong folder."
     return img_list
 
 

@@ -1,4 +1,4 @@
-from Text_Segmentation.plotting import plotSimpleImages
+from Text_Segmentation.plotting import plot_simple_images
 import cv2
 import torch
 from torch import nn

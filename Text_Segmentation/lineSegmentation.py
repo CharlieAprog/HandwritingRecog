@@ -19,15 +19,17 @@ def timer(original_func):
     return wrapper_function
 
 
-def getImage(img_path):
+def get_image(img_path):
+    """ Reads and returns a binary image from given path. """
     image = cv2.imread(img_path, 0)
     image = cv2.bitwise_not(image)
     return image
 
 
 def get_binary(img):
+    """ Returns a binarized image being undergone 'threshold_otsu()' """
     mean = np.mean(img)
-    if mean == 0.0 or mean == 1.0:
+    if mean == 0.0 or mean == 1.0:  # Fully black or white image
         return img
 
     thresh = threshold_otsu(img)
@@ -39,7 +41,14 @@ def get_binary(img):
 # |-----------------------------------------|
 # |             Hough Transform             |
 # |-----------------------------------------|
-def rotateImage(image):
+def rotate_image(image):
+    """
+    A function that takes a binary image and rotates it until the lines found by Hough-Transform become
+    perpendicular or close to perpendicular to the vertical axis.
+
+    Returns a rotated binary image.
+    """
+
     # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
     tested_angles = np.linspace(-np.pi * 40 / 100, -np.pi * 50 / 100, 100)
     hspace, theta, dist, = hough_line(image, tested_angles)
@@ -50,7 +59,7 @@ def rotateImage(image):
     origin = np.array((0, image.shape[1]))
     for _, angle, dist in zip(*hough_line_peaks(
             hspace, theta, dist, min_distance=50, threshold=0.76 *
-            np.max(hspace))):
+                                                            np.max(hspace))):
         # Not for plotting but later calculation of angles
         angle_list.append(angle)
         dist_list.append(dist)
@@ -63,14 +72,14 @@ def rotateImage(image):
     # Convert angles from radians to degrees (1 rad = 180/pi degrees)
     angles = [a * 180 / np.pi for a in angle_list]
     change = 90 - -1 * np.mean(angles)
-    newImage = cv2.bitwise_not(imutils.rotate_bound(image, -change))
+    new_image = cv2.bitwise_not(imutils.rotate_bound(image, -change))
 
-    # plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage)
+    # plotHoughTransform(hspace, theta, dist, x0, x1, origin, new_image)
 
     # Compute difference between the two lines
     angle_difference = np.max(angles) - np.min(angles)
 
-    return newImage
+    return new_image
 
 
 # |-----------------------------------------|
@@ -87,117 +96,124 @@ def calc_outlier(data, method="std"):
         outlier = np.mean(data) - np.std(data)
     return outlier
 
-@timer
-def getLines(newImage):
-    hist = []
-    row_len = newImage.shape[1]
-    for row in newImage:
-        hist.append(row_len - len(row.nonzero()[0]))
 
-    temp = []  # list of pixels in a peak's neighborhood from left to right
-    thr = {}  # dictionary containing lines of interest
+@timer
+def get_lines(new_image):
+    """
+    A function that takes a binary image and searches for lines.
+
+    Returns the top and bottom Y coordinates of the rectangular sections that do not contain characters,
+    as well as a number of auxiliary parameters.
+    """
+
+    # A) Obtain active pixels in each row (vertical projection)
+    v_hist = []
+    row_len = new_image.shape[1]
+    for row in new_image:
+        v_hist.append(row_len - len(row.nonzero()[0]))
+
+    local_lines = []  # list of pixels in a peak's neighborhood from left to right
+    thr_lines = {}  # thresholded lines; containing lines of interest and the vertical projections thereof
     c = 0  # counter variable
-    thr_num = max(hist) * 0.09
-    for col, p in enumerate(hist):  # if pixel is above thresh, add it to temp
-        if p >= thr_num and hist[col - 1] > thr_num and col > 0:
-            temp.append(p)
+    thr_num = max(v_hist) * 0.09
+    for idx, line_sum in enumerate(v_hist):
+        if line_sum >= thr_num and v_hist[idx - 1] > thr_num and idx > 0:
+            local_lines.append(line_sum)
             c += 1
-        elif len(
-                temp
-        ) > 0:  # once p is nolonger larger than thresh and it has been in the past
-            # add temp to a dict and start temp again
-            thr.setdefault(col - c, temp)
-            temp = []
+        # once line_sum is no longer larger than thresh and it has been in the past
+        elif len(local_lines) > 0:
+            # add local_lines to a dict and start local_lines again
+            thr_lines.setdefault(idx - c, local_lines)
+            local_lines = []
             c = 0
 
-    line_heights = []
-    thr_peaks = []
-    for idx, p in enumerate(thr.items()):
-        line_heights.append(len(p[1]))
-        thr_peaks.append({
-            "loc": [p[0], p[0] + len(p[1])],
-            "value": max(p[1]),
-            "lh": p[0] + len(p[1]) - p[0]
-        })
+    # B) Obtain the starting and ending locations, the max value, and the height of each peak's neighborhood (section)
+    locations = []
+    for idx, line in enumerate(thr_lines.items()):
+        y_loc_start = line[0]
+        line_projections = line[1]  # line projections within the neighbourhood of the current peak
+        height = len(line_projections)
+        locations.append([y_loc_start, y_loc_start + height])  # starting and ending location of the section
 
-    # combining lines that are too close together
-    locations = [x['loc'] for x in thr_peaks]
+    # C) Combining sections that are too close together
+    # distances between consecutive sections (SEC_n+1_top - SEC_n_bottom)
     distances = [
         locations[sec + 1][0] - locations[sec][1]
         for sec in range(len(locations) - 1)
     ]
-    min_distance = calc_outlier(
-        distances) if calc_outlier(distances) > 18 else 18
-    print(distances, '\n', min_distance)
-    # min_distance = int(max(distances) /6) if int(max(distances) /6) > 22 else 22
+    min_distance = calc_outlier(distances) if calc_outlier(distances) > 18 else 18
+    # print(distances, '\n', min_distance)
+
     locations_new = []
     idx = 0
-    first = 0
-    second = 1
-    while idx < len(locations):
-        if idx < len(distances):
+    while idx < len(locations):  # Run combination algorithm from top to bottom
+        if idx < len(distances):  # len(distances) = len(locations)-1
             distance = distances[idx]
             locations_new.append(locations[idx])
-        else:
+        else:  # End of algorithm
             if locations[idx][1] - locations[idx][0] > min_distance:
                 locations_new.append(locations[idx])
             break
 
         idx2 = 1
         while distance < min_distance:
-            locations_new[-1][second] = locations[idx + idx2][second]
+            locations_new[-1][1] = locations[idx + idx2][1]  # merge current location with next
             if idx + idx2 < len(distances):
-                distance = distances[idx + idx2]
+                distance = distances[idx + idx2]  # merge current distance with next
             else:
                 break
             idx2 += 1
         idx += idx2
 
-    # Adding buffer, based on average height of the NEW (!) lines, to each line that is too small
-    line_heights_new = [x[1] - x[0] for x in locations_new]
-    avg_lh_new = np.mean(line_heights_new)
+    # D) Adding buffer, based on average height of the NEW (!) sections, to each section that is too small
+    section_heights_new = [x[1] - x[0] for x in locations_new]
+    avg_sh_new = np.mean(section_heights_new)
     for idx, loc in enumerate(locations_new):
-        if line_heights_new[idx] < avg_lh_new:
+        if section_heights_new[idx] < avg_sh_new:
             for i in range(len(loc)):
                 if idx == 0:
                     # top lines are pushed up
-                    locations_new[idx][i] -= int(avg_lh_new / 5)
+                    locations_new[idx][i] -= int(avg_sh_new / 5)
                 else:
                     # bottom lines are pushed down
-                    locations_new[idx][i] += int(avg_lh_new / 6)
+                    locations_new[idx][i] += int(avg_sh_new / 6)
 
-    # remove sections that are left over than have a low hight
+    # E) Remove sections with too small height (may occur due to very short lines with scattered artefacts)
     locations_final = []
-    mid_distances = [line[1] - line[0] for line in locations_new]
-    min_height = int(calc_outlier(mid_distances) / 3) + 2
-    for idx in range(len(mid_distances)):
-        if mid_distances[idx] >= min_height:
+    min_height = int(calc_outlier(section_heights_new) / 3) + 2
+    for idx in range(len(section_heights_new)):
+        if section_heights_new[idx] >= min_height:
             locations_final.append(locations_new[idx])
-    line_heights_final = [x[1] - x[0] for x in locations_final]
-    avg_lh_final = np.mean(line_heights_final)
+    section_heights_final = [x[1] - x[0] for x in locations_final]
+    avg_sh_final = np.mean(section_heights_final)
 
-    # obtaining the locations of the inbetween sections
+    # F) Obtaining the locations of the inbetween (non-character) sections
+    # and adding a bonus line to the top of the image
     mid_lines = []
     top_line = [
-        locations_final[0][0] - int(avg_lh_final * 2.5),
-        locations_final[0][0] - int(avg_lh_final)
+        locations_final[0][0] - int(avg_sh_final * 2.5),
+        locations_final[0][0] - int(avg_sh_final)
     ]
     mid_lines.append(top_line)
+
+    # TODO: This might not even be necessary at all
     for sec in range(len(locations_final) - 1):
-        if locations_final[sec][first] < locations_final[sec][second]:
+        if locations_final[sec][0] < locations_final[sec][1]:
             beginning = locations_final[sec][1]  # bottom line of peak_n
             end = locations_final[sec + 1][0]  # top line of peak_n+1
             mid_lines.append([beginning, end])
 
-    # Obtain bottom line
+    # sanity check
     mid2 = []
     for sec in mid_lines:
         if sec[0] < sec[1]:
             mid2.append(sec)
+
+    # Adding a bonus line to the bottom of the image
     bottom_line = [
-        locations_final[-1][1] + int(avg_lh_final),
-        locations_final[-1][1] + int(avg_lh_final * 2)
+        locations_final[-1][1] + int(avg_sh_final),
+        locations_final[-1][1] + int(avg_sh_final * 2)
     ]
     mid2.append(bottom_line)
 
-    return mid2, top_line, bottom_line, avg_lh_final, hist, thr_num,
+    return mid2, top_line, bottom_line, avg_sh_final, v_hist, thr_num,

@@ -45,8 +45,8 @@ def text_segment(image_num):
     # |--------------------------------------------|
     # |            LINE SEGMENTATION               |
     # |--------------------------------------------|
-    image = getImage(img_path)
-    image = rotateImage(image)
+    image = get_image(img_path)
+    image = rotate_image(image)
     binary_image = get_binary(image)
 
     if not os.path.exists(
@@ -54,24 +54,24 @@ def text_segment(image_num):
         print("Running line segmentation on new image...")
         os.makedirs(new_folder_path)
         # run image-processing
-        mid_lines, top_line, bottom_line, avg_lh, hist, thr_num = getLines(
+        mid_lines, top_line, bottom_line, avg_lh, hist, thr_num = get_lines(
             image)
-        plotHist(hist,
-                 thr_num,
-                 save=True,
-                 folder_path=new_folder_path,
-                 overwrite_path=False)
-        plotHistLinesOnImage(binary_image,
-                             mid_lines,
-                             save=True,
-                             folder_path=new_folder_path,
-                             overwrite_path=False)
+        plot_hist(hist,
+                  thr_num,
+                  save=True,
+                  folder_path=new_folder_path,
+                  overwrite_path=False)
+        plot_hist_lines_on_image(binary_image,
+                                 mid_lines,
+                                 save=True,
+                                 folder_path=new_folder_path,
+                                 overwrite_path=False)
         paths = find_paths(mid_lines, binary_image, avg_lh)
-        plotPathsNextToImage(binary_image,
-                             paths,
-                             save=True,
-                             folder_path=new_folder_path,
-                             overwrite_path=False)
+        plot_paths_next_to_image(binary_image,
+                                 paths,
+                                 save=True,
+                                 folder_path=new_folder_path,
+                                 overwrite_path=False)
         # save paths
         for idx, path in enumerate(paths):
             save_path(path, f"{new_folder_path}/path_{idx}.csv")

@@ -2,9 +2,9 @@ from tarfile import NUL
 from matplotlib.pyplot import plot, title
 import itertools
 import copy
-from Text_Segmentation.plotting import plotSimpleImages, plotGrid
+from Text_Segmentation.plotting import plot_simple_images, plot_grid
 from Text_Segmentation.lineSegmentation import calc_outlier, timer, get_binary
-from Text_Segmentation.plotting import plotSimpleImages
+from Text_Segmentation.plotting import plot_simple_images
 from Text_Segmentation.characterSegmentation import *
 from Text_Segmentation.textSegmentation import text_segment, trim_360
 from Text_Segmentation import *
@@ -21,49 +21,6 @@ def clean_image(image, thresh_side=500, thresh_mid=30, trim_thresh=10):
         new = image
     new = trim_360(new, line_thresh=trim_thresh)
     return new
-
-
-# lines = the images of each line of an image
-# words_in_lines = each word in each line of image,
-# sliding_words = sliding window of each of these words
-# TODO
-#       -d on these suspected multi characters, run sliding window and obtain n images
-#       -e run CNN on these n images and predict the label and mark the highest certainty region
-#       -f (hopefully do not have to implement ngrams)
-#       -g save the regions of the highest certainty predictions to the words in line function
-#       -h create list of predictions of all resulting characters and pass for each character the character and the predicted label to style recogniser
-#       -i --> recognise style
-
-# |-----------------------------------------------------|
-# |              CHARACTER FILTERING                    |
-# |-----------------------------------------------------|
-lines, words_in_lines = text_segment(image_num)
-# Get all characters from all words
-segmented_word_box_images, segmented_word_box_areas, all_box_boundaries = run_character_segment(words_in_lines)
-filtered_word_box_images_all_lines, character_widths = filter_characters(segmented_word_box_areas,
-                                                                         segmented_word_box_images, all_box_boundaries,
-                                                                         words_in_lines)
-
-# |-----------------------------------------------------|
-# |              CHARACTER RECOGNITION                  |
-# |-----------------------------------------------------|
-characters = destructure_characters(filtered_word_box_images_all_lines)
-single_character_widths = [width for width in character_widths if width <= 120]
-mean_character_width = np.mean(single_character_widths)
-model = TheRecognizer()
-model.load_model(model.load_checkpoint('40_char_rec.ckpt', map_location=torch.device('cpu')))
-print(mean_character_width + np.std(character_widths))
-
-name2idx = {'Alef': 0, 'Ayin': 1, 'Bet': 2, 'Dalet': 3, 'Gimel': 4, 'He': 5,
-            'Het': 6, 'Kaf': 7, 'Kaf-final': 8, 'Lamed': 9, 'Mem': 10,
-            'Mem-medial': 11, 'Nun-final': 12, 'Nun-medial': 13, 'Pe': 14,
-            'Pe-final': 15, 'Qof': 16, 'Resh': 17, 'Samekh': 18, 'Shin': 19,
-            'Taw': 20, 'Tet': 21, 'Tsadi-final': 22, 'Tsadi-medial': 23,
-            'Waw': 24, 'Yod': 25, 'Zayin': 26}
-
-prediction_list = []
-window_size = int(mean_character_width)
-shift = 1
 
 
 def select_slides(slides, predicted_char_num, model, window_size):
@@ -115,21 +72,48 @@ def select_slides(slides, predicted_char_num, model, window_size):
     labels.append(last_label)
     return recognised_characters, labels
 
+# |-----------------------------------------------------|
+# |              CHARACTER FILTERING                    |
+# |-----------------------------------------------------|
+lines, words_in_lines = text_segment(image_num)
+# Get all characters from all words
+segmented_word_box_images, segmented_word_box_areas, all_box_boundaries = run_character_segment(words_in_lines)
+filtered_word_box_images_all_lines, character_widths = filter_characters(segmented_word_box_areas,
+                                                                         segmented_word_box_images, all_box_boundaries,
+                                                                         words_in_lines)
 
+# |-----------------------------------------------------|
+# |              CHARACTER RECOGNITION                  |
+# |-----------------------------------------------------|
+characters = destructure_characters(filtered_word_box_images_all_lines)
+single_character_widths = [width for width in character_widths if width <= 120]
+mean_character_width = np.mean(single_character_widths)
+model = TheRecognizer()
+model.load_model(model.load_checkpoint('40_char_rec.ckpt', map_location=torch.device('cpu')))
+print(mean_character_width + np.std(character_widths))
+
+name2idx = {'Alef': 0, 'Ayin': 1, 'Bet': 2, 'Dalet': 3, 'Gimel': 4, 'He': 5,
+            'Het': 6, 'Kaf': 7, 'Kaf-final': 8, 'Lamed': 9, 'Mem': 10,
+            'Mem-medial': 11, 'Nun-final': 12, 'Nun-medial': 13, 'Pe': 14,
+            'Pe-final': 15, 'Qof': 16, 'Resh': 17, 'Samekh': 18, 'Shin': 19,
+            'Taw': 20, 'Tet': 21, 'Tsadi-final': 22, 'Tsadi-medial': 23,
+            'Waw': 24, 'Yod': 25, 'Zayin': 26}
+
+prediction_list = []
+window_size = int(mean_character_width)
+shift = 1
 all_suspected = 0
 changed = 0
-suspect_indices = []
-changed_indices = []
+
 characters_eroded = []
 for char_idx, character_segment in enumerate(characters):
     if character_segment.shape[1] > mean_character_width + np.std(single_character_widths):
         all_suspected += 1
-        suspect_indices.append(char_idx)
         # Run connected components to get number of labels, so merged clusters are identified beforehand
         character_segment = character_segment.astype(np.uint8)
         num_labels, clusters = cv2.connectedComponents(character_segment, connectivity=4)
-        clusters = getComponentClusters(num_labels, clusters)
-        box_boundaries = getBoundingBoxBoundaries(character_segment, clusters)
+        clusters = get_component_clusters(num_labels, clusters)
+        box_boundaries = get_bounding_box_boundaries(character_segment, clusters)
 
         eroded_img_boundaries, eroded_img = erode_clusters(character_segment, kernel=(2, 2), iter_num=3)
         print(num_labels, len(eroded_img_boundaries))
@@ -139,7 +123,6 @@ for char_idx, character_segment in enumerate(characters):
                                                                 eroded_box_img_list, eroded_img_boundaries, eroded_img)
         if len(eroded_img_boundaries) > len(box_boundaries):
             changed += 1
-            changed_indices.append(char_idx)
             temp_list = []
             for img in filtered_eroded_box_img_list:
                 kernel = np.ones((2, 2), np.uint8)
@@ -152,10 +135,6 @@ for char_idx, character_segment in enumerate(characters):
             # plotSimpleImages(temp_list, title='Dialation and erosion')
     else:
         characters_eroded.append(character_segment)
-
-# for idx in suspect_indices:
-#     if idx not in changed_indices:
-#         plotSimpleImages([characters[idx]], title="Characters failed to erode")
 
 print(f'all:{all_suspected}, changed:{changed}')
 for char_idx, character_segment in enumerate(characters_eroded):
@@ -170,7 +149,7 @@ for char_idx, character_segment in enumerate(characters_eroded):
         predictions_string = ''
         for label in predicted_labels:
             predictions_string = f'{predictions_string}, {list(name2idx.keys())[label]}'
-        plotSimpleImages(recognised_characters, title=predictions_string)
+        plot_simple_images(recognised_characters, title=predictions_string)
 
     else:  # single character
         print("\nSingle character classification")
@@ -178,7 +157,7 @@ for char_idx, character_segment in enumerate(characters_eroded):
         predicted_label, probability = get_label_probability(character_segment, model)
         predicted_letter = list(name2idx.keys())[predicted_label]
         print(f'Predicted label:{predicted_letter} probabilty:{probability}')
-        plotSimpleImages([character_segment], title=f'{predicted_label + 1}:{predicted_letter}')
+        plot_simple_images([character_segment], title=f'{predicted_label + 1}:{predicted_letter}')
 
     # predicted_letter = list(name2idx.keys())[predicted_label]
     # print(f'Predicted label:{predicted_letter} probabilty:{probability}')

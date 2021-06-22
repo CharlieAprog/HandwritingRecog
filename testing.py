@@ -1,7 +1,7 @@
 from Style_Classification.dim_reduction import get_style_char_images
 import cv2
-from Text_Segmentation.characterSegmentation import getBoundingBoxBoundaries, remove_character_artifacts
-from Text_Segmentation.plotting import plotSimpleImages
+from Text_Segmentation.characterSegmentation import get_bounding_box_boundaries, remove_character_artifacts
+from Text_Segmentation.plotting import plot_simple_images
 from Text_Segmentation.lineSegmentation import get_binary
 from skimage.filters import threshold_otsu
 import numpy as np
@@ -51,7 +51,7 @@ def clean_image(image, thresh_side, thresh_mid, trim_thresh= 10):
     if new.size == 0:
         new = image
     new = trim_360(new, line_thresh=trim_thresh)
-    plotSimpleImages([image,new], title='example')
+    plot_simple_images([image, new], title='example')
 
 for image in  all_archaic:
     clean_image(image, thresh_side = 3000, thresh_mid = 200) 
