@@ -8,6 +8,8 @@ from sklearn.decomposition import PCA
 from sklearn import svm
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import plot_confusion_matrix
+from sklearn.calibration import CalibratedClassifierCV
+
 def get_numpy_arrays(dict,map):
     x,y = [],[]
     for label, item in dict.items():
@@ -40,7 +42,7 @@ character_map = {'Alef':0,'Ayin':1,'Bet':2,'Dalet':3,'Gimel':4,'He':5,'Het':6,'K
             'Mem':10,'Mem-medial':11,'Nun-final':12,'Nun-medial':13,'Pe':14,'Pe-final':15,'Qof':16,'Resh':17,
             'Samekh':18,'Shin':19,'Taw':20,'Tet':21,'Tsadi-final':22,'Tsadi-medial':23,'Waw':24,'Yod':25,'Zayin':26}
 
-path =  'C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/data/Char_Recog/binarized_monkbrill_split_40x40_morphed/'
+path =  'C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/data/Char_Recog/final_char_data/'
 train_path = path + 'train/'
 test_path = path + 'val/'
 test_path_nomorph = path +'val_no_morph/'
@@ -73,9 +75,16 @@ trainx= pca.transform(trainx)
 testx =pca.transform(testx)
 testx_nomorph = pca.transform(testx_nomorph)
 
-clf = svm.SVC()
+svm = svm.SVC()
+clf = CalibratedClassifierCV(svm) 
 clf.fit(trainx, trainy)
+
 predict =  clf.predict(testx_nomorph)
+
+pdf = clf.predict_proba(testx_nomorph)
+print(pdf.sum())
+print(pdf.shape)
+
 
 print('accuracy on test no morph set:',accuracy_score(testy_nomorph,predict))
 plot_confusion_matrix(clf,X=testx_nomorph, y_true= testy_nomorph)
