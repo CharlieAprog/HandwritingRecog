@@ -1,0 +1,25 @@
+0) Read image
+
+1) rotate_image()
+ A) Hough Transform --> Rotate image to remove undesired skewness
+
+2) get_lines()
+""" A function that takes a binary image and returns the top and bottom Y coordinates of the rectangular sections,
+    that do not contain characters, as well as a number of auxiliary parameters. """
+
+ A) Obtain Y coordinates of lines (peaks) that are above a fine-tuned threshold
+    (9% of peak of image's vertical projection)
+ B) Obtain sections:
+    - the starting and ending locations,
+    - the max value,
+    - and the height
+     of each peak's neighborhood
+ C) Combine sections that are too close together
+    - Obtain distances between ALL sections (SEC_n+1_top - SEC_n_bottom)
+    - From top to bottom, merge all sections that have too small distances between each other
+ D) Adding buffer to sections if they are below average section height
+ E) Remove sections with too small height (may occur due to very short lines with scattered artefacts)
+ F) Obtain non-character containing sections,
+    Create a bonus line at the top and bottom of the image based on average section height
+
+
