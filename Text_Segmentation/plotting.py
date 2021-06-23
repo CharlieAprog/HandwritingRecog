@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import cv2
 import os
+
+
 # from Text_Segmentation.textSegmentation import image_num
 
 
@@ -43,11 +45,11 @@ def handle_saving(plotting_function):
 
 
 @handle_saving
-def plotHist(hist,
-             y_threshold,
-             save=False,
-             folder_path=None,
-             overwrite_path=False):
+def plot_hist(hist,
+              y_threshold,
+              save=False,
+              folder_path=None,
+              overwrite_path=False):
     fs = 25
     plt.figure(figsize=(10, 6))
     plt.plot(hist)
@@ -62,11 +64,11 @@ def plotHist(hist,
 
 
 @handle_saving
-def plotHistLinesOnImage(newImage,
-                         midlines,
-                         save=False,
-                         folder_path=None,
-                         overwrite_path=False):
+def plot_hist_lines_on_image(newImage,
+                             midlines,
+                             save=False,
+                             folder_path=None,
+                             overwrite_path=False):
     plt.figure(figsize=(10, 6))
     plt.imshow(newImage, cmap="gray")
     for i in range(len(midlines)):
@@ -78,11 +80,11 @@ def plotHistLinesOnImage(newImage,
 
 
 @handle_saving
-def plotPathsNextToImage(binary_image,
-                         paths,
-                         save=False,
-                         folder_path=None,
-                         overwrite_path=False):
+def plot_paths_next_to_image(binary_image,
+                             paths,
+                             save=False,
+                             folder_path=None,
+                             overwrite_path=False):
     fig, ax = plt.subplots(figsize=(16, 12), ncols=2)
     for path in paths:
         path = np.array(path)
@@ -94,17 +96,17 @@ def plotPathsNextToImage(binary_image,
 
 
 @handle_saving
-def plotHoughTransform(hspace,
-                       theta,
-                       dist,
-                       x0,
-                       x1,
-                       origin,
-                       image,
-                       newImage,
-                       save=False,
-                       folder_path=None,
-                       overwrite_path=False):
+def plot_hough_transform(hspace,
+                         theta,
+                         dist,
+                         x0,
+                         x1,
+                         origin,
+                         image,
+                         newImage,
+                         save=False,
+                         folder_path=None,
+                         overwrite_path=False):
     fig, axes = plt.subplots(1, 4, figsize=(15, 6))
     ax = axes.ravel()
 
@@ -140,7 +142,7 @@ def plotHoughTransform(hspace,
     plt.tight_layout()
 
 
-def plotSimpleImages(image_list, title=None):
+def plot_simple_images(image_list, title=None):
     fig, ax = plt.subplots(nrows=len(image_list), figsize=(5, 6))
     for index, image in enumerate(image_list):
         if len(image_list) > 1:
@@ -152,7 +154,7 @@ def plotSimpleImages(image_list, title=None):
     plt.show()
 
 
-def plotWordsInLine(line, words):
+def plot_words_in_line(line, words):
     fig, ax = plt.subplots(nrows=len(words), figsize=(5, 8))
     for index, word in enumerate(words):
         ax[index].axis("off")
@@ -160,7 +162,7 @@ def plotWordsInLine(line, words):
     plt.show()
 
 
-def plotGrid(images, title=None):
+def plot_grid(images, title=None):
     # distribute bottom row images
     bottom_images = images[2:]
     axes = []
@@ -193,7 +195,8 @@ def plotGrid(images, title=None):
     plt.title(title) if title else plt.title(' ')
     plt.show()
 
-def plotConnectedComponentLabel(path):
+
+def plot_connected_component_label(path):
     """
     Plots the connected components of an image file.
     In our system it should take a binary image (black background, white foreground) as 'path'.
@@ -231,7 +234,7 @@ def plotConnectedComponentLabel(path):
     plt.show()
 
 
-def plotConnectedComponentBoundingBoxes(image, rectangle_boundaries, title=None):
+def plot_connected_component_bounding_boxes(image, rectangle_boundaries, title=None):
     plt.imshow(image, cmap="gray")
     ax = plt.gca()
     for idx, box in enumerate(rectangle_boundaries):
