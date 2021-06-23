@@ -9,6 +9,7 @@ import glob
 from plotting import *
 from aStar import *
 
+
 def timer(original_func):
     """ Timer decorator for debugging purposes """
     import time
@@ -283,6 +284,7 @@ def line_segmentation(img_path, new_folder_path):
         # save paths
         for idx, path in enumerate(paths):
             save_path(path, f"{new_folder_path}/path_{idx}.csv")
+        paths = [np.array(path) for path in paths]
     else:
         # load paths
         file_paths_list = sorted(glob.glob(f'{new_folder_path}/*.csv'),

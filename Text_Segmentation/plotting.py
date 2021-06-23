@@ -5,9 +5,6 @@ import cv2
 import os
 
 
-# from Text_Segmentation.textSegmentation import image_num
-
-
 def handle_saving(plotting_function):
     def wrapper_function(*args, **kwargs):
         plotting_function(*args, **kwargs)
@@ -19,9 +16,9 @@ def handle_saving(plotting_function):
             plt.show()
         else:
             if len(save_args) == 3:
-                img_path = f"{save_args[1]}{os.path.sep}{plotting_function.__name__}_img{image_num}.png"
+                img_path = f"{save_args[1]}{os.path.sep}{plotting_function.__name__}.png"
                 if not os.path.exists(
-                        f"{save_args[1]}{os.path.sep}{plotting_function.__name__}_img{image_num}.png"
+                        f"{save_args[1]}{os.path.sep}{plotting_function.__name__}.png"
                 ):
                     plt.savefig(img_path)
                     print(
@@ -40,11 +37,10 @@ def handle_saving(plotting_function):
                 raise IndexError(
                     f"Expected number of arguments: 3 (save, folder_path, overwrite) but received only 2"
                 )
-
     return wrapper_function
 
 
-# @handle_saving
+@handle_saving
 def plot_hist(hist,
               y_threshold,
               save=False,
@@ -61,9 +57,9 @@ def plot_hist(hist,
     plt.yticks(fontsize=fs - 5)
     plt.xticks(fontsize=fs - 5)
     plt.grid()
-    plt.show()
 
-# @handle_saving
+
+@handle_saving
 def plot_hist_lines_on_image(newImage,
                              midlines,
                              save=False,
@@ -77,9 +73,9 @@ def plot_hist_lines_on_image(newImage,
                 plt.axhline(y=loc, color="r", linestyle="-")
             else:
                 plt.axhline(y=loc, color="b", linestyle="-")
-    plt.show()
 
-# @handle_saving
+
+@handle_saving
 def plot_paths_next_to_image(binary_image,
                              paths,
                              save=False,
@@ -93,9 +89,9 @@ def plot_paths_next_to_image(binary_image,
     ax[0].axis("off")
     ax[1].imshow(binary_image, cmap="gray")
     ax[0].imshow(binary_image, cmap="gray")
-    plt.show()
 
-# @handle_saving
+
+@handle_saving
 def plot_hough_transform(hspace,
                          theta,
                          dist,
@@ -140,7 +136,7 @@ def plot_hough_transform(hspace,
     ax[3].imshow(newImage, cmap='gray')
 
     plt.tight_layout()
-    plt.show()
+
 
 def plot_simple_images(image_list, title=None):
     fig, ax = plt.subplots(nrows=len(image_list), figsize=(5, 6))
@@ -150,7 +146,6 @@ def plot_simple_images(image_list, title=None):
         else:
             ax.imshow(image, cmap="gray")
     fig.suptitle(title) if title else fig.suptitle('')
-
     plt.show()
 
 

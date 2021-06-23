@@ -2,6 +2,7 @@ import numpy as np
 from plotting import plot_simple_images
 import torch
 import os
+import copy
 from Text_Segmentation.lineSegmentation import line_segmentation
 from Text_Segmentation.wordSegmentation import word_segmentation, trim_360
 from Text_Segmentation.characterSegmentation import character_segmentation, remove_character_artifacts, slide_over_word
@@ -18,13 +19,13 @@ def clean_image(image, thresh_side=500, thresh_mid=30, trim_thresh=10):
     return new
 
 
-def select_slides(slides, predicted_char_num, model, window_size):
+def select_slides(sliding_characters, predicted_char_num, model, window_size, name2idx):
     shift = 1
     chosen_characters = 2
 
-    first = trim_360(slides[0])
+    first = trim_360(sliding_characters[0])
     first_label, _ = get_label_probability(first, model)
-    last = trim_360(slides[-1])
+    last = trim_360(sliding_characters[-1])
     last_label, _ = get_label_probability(last, model)
 
     recognised_characters = [first]
@@ -64,8 +65,10 @@ def select_slides(slides, predicted_char_num, model, window_size):
     labels.append(last_label)
     return recognised_characters, labels
 
-dev_path = "../data/image-data/binaryRenamed/9.jpg" # development path
-new_folder_path = "../data/image-data/paths/" + f"{os.path.basename(dev_path).split('.')[0]}"
+
+image_num = 10
+dev_path = f"../data/image-data/binaryRenamed/{image_num}.jpg"  # development path
+new_folder_path = f"../data/image-data/paths/{image_num}"
 
 # periods_path = "../data/full_images_periods/Hasmonean/hasmonean-330-1.jpg"
 # new_folder_path = f"../data/full_images_periods/Hasmonean/paths/{os.path.basename(periods_path).split('.')[0]}"
@@ -93,14 +96,14 @@ for char_idx, character_segment in enumerate(characters):
         predicted_char_num = round(character_segment.shape[1] / mean_character_width)
         sliding_characters = slide_over_word(character_segment, window_size, shift)
         recognised_characters, predicted_labels = select_slides(sliding_characters, predicted_char_num, model,
-                                                                window_size)
-        # multiple_characters = [recognised_characters]
-        # multiple_characters[0].append(character_segment)
-        # # recognised_characters.append(character_segment)
-        # predictions_string = ''
-        # for label in predicted_labels:
-        #     predictions_string = f'{predictions_string}, {list(name2idx.keys())[label]}'
-        # plot_simple_images(multiple_characters, title=predictions_string)
+                                                                window_size, name2idx)
+        multiple_characters = copy.deepcopy(recognised_characters)
+        multiple_characters.append(character_segment)
+        # recognised_characters.append(character_segment)
+        predictions_string = ''
+        for label in predicted_labels:
+            predictions_string = f'{predictions_string}, {list(name2idx.keys())[label]}'
+        plot_simple_images(multiple_characters, title=predictions_string)
         all_segmented_characters.extend(recognised_characters)
         all_segmented_labels.extend(predicted_labels)
     else:  # single character
