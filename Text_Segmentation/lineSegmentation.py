@@ -3,7 +3,11 @@ import numpy as np
 from skimage.transform import hough_line, hough_line_peaks, probabilistic_hough_line
 from skimage.filters import threshold_otsu
 import imutils
-
+import os
+import csv
+import glob
+from plotting import *
+from aStar import *
 
 def timer(original_func):
     """ Timer decorator for debugging purposes """
@@ -23,6 +27,7 @@ def get_image(img_path):
     """ Reads and returns a binary image from given path. """
     image = cv2.imread(img_path, 0)
     image = cv2.bitwise_not(image)
+    assert len(image.shape) == 2, "Trying to read image while being in a wrong folder, or provided path is wrong."
     return image
 
 
@@ -38,9 +43,6 @@ def get_binary(img):
     return binary
 
 
-# |-----------------------------------------|
-# |             Hough Transform             |
-# |-----------------------------------------|
 def rotate_image(image):
     """
     A function that takes a binary image and rotates it until the lines found by Hough-Transform become
@@ -82,9 +84,6 @@ def rotate_image(image):
     return new_image
 
 
-# |-----------------------------------------|
-# |         Histogram Projection            |
-# |-----------------------------------------|
 def calc_outlier(data, method="std"):
     if method == "iqr":
         # method1: interquartile
@@ -106,18 +105,18 @@ def get_lines(new_image):
     as well as a number of auxiliary parameters.
     """
 
-    # A) Obtain active pixels in each row (vertical projection)
-    v_hist = []
+    # A) Obtain active pixels in each row (horizontal projection)
+    h_hist = []
     row_len = new_image.shape[1]
     for row in new_image:
-        v_hist.append(row_len - len(row.nonzero()[0]))
+        h_hist.append(row_len - len(row.nonzero()[0]))
 
     local_lines = []  # list of pixels in a peak's neighborhood from left to right
-    thr_lines = {}  # thresholded lines; containing lines of interest and the vertical projections thereof
+    thr_lines = {}  # thresholded lines; containing lines of interest and the horizontal projections thereof
     c = 0  # counter variable
-    thr_num = max(v_hist) * 0.09
-    for idx, line_sum in enumerate(v_hist):
-        if line_sum >= thr_num and v_hist[idx - 1] > thr_num and idx > 0:
+    thr_num = max(h_hist) * 0.09
+    for idx, line_sum in enumerate(h_hist):
+        if line_sum >= thr_num and h_hist[idx - 1] > thr_num and idx > 0:
             local_lines.append(line_sum)
             c += 1
         # once line_sum is no longer larger than thresh and it has been in the past
@@ -216,4 +215,92 @@ def get_lines(new_image):
     ]
     mid2.append(bottom_line)
 
-    return mid2, top_line, bottom_line, avg_sh_final, v_hist, thr_num,
+    return mid2, avg_sh_final, h_hist, thr_num,
+
+
+def extract_char_section_from_image(image, upper_line, lower_line):
+    """ Returns a rectangular section that contain characters using the original image and two consecutive lines from
+    top to bottom """
+    upper_boundary = np.min(upper_line[:, 0])
+    lower_boundary = np.max(lower_line[:, 0])
+    img_copy = np.copy(image)
+    r, c = img_copy.shape
+    x_axis = 0
+    y_axis = 1
+    for step in upper_line:
+        img_copy[0:step[x_axis], step[y_axis]] = 0
+    for step in lower_line:
+        img_copy[step[x_axis]:r, step[y_axis]] = 0
+    return img_copy[upper_boundary:lower_boundary, :]
+
+
+def save_path(path, file_name):
+    """ Saves a numpy array into csv format for a SINGLE path """
+    with open(file_name, 'w') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',')
+        for row in path:
+            csvwriter.writerow(row)
+
+
+def get_key(fp):
+    filename = os.path.splitext(os.path.basename(fp))[0]
+    int_part = filename.split('_')[1]
+    return int(int_part)
+
+
+def load_path(file_name):
+    """ Loads a csv formatted path file into a numpy array. """
+    return np.loadtxt(file_name, delimiter=',', dtype=int)
+
+
+def line_segmentation(image_num):
+    img_path = f'../data/image-data/binaryRenamed/{image_num}.jpg'
+    new_folder_path = f"../data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
+
+    image = get_image(img_path)
+    image = rotate_image(image)
+    binary_image = get_binary(image)
+
+    if not os.path.exists(new_folder_path):
+        print("Running line segmentation on new image...")
+        os.makedirs(new_folder_path)
+        # run image-processing
+        mid_lines, avg_lh, hist, thr_num = get_lines(image)
+        plot_hist(hist,
+                  thr_num,
+                  save=True,
+                  folder_path=new_folder_path,
+                  overwrite_path=False)
+        plot_hist_lines_on_image(binary_image,
+                                 mid_lines,
+                                 save=True,
+                                 folder_path=new_folder_path,
+                                 overwrite_path=False)
+        # Find paths with A*
+        paths = find_paths(mid_lines, binary_image, avg_lh)
+        plot_paths_next_to_image(binary_image,
+                                 paths,
+                                 save=True,
+                                 folder_path=new_folder_path,
+                                 overwrite_path=False)
+        # save paths
+        for idx, path in enumerate(paths):
+            save_path(path, f"{new_folder_path}/path_{idx}.csv")
+    else:
+        print(f"Loading line segmentation of image {image_num}...")
+        # load paths
+        file_paths_list = sorted(glob.glob(f'{new_folder_path}/*.csv'),
+                                 key=get_key)
+        paths = []  # a* paths
+        for file_path in file_paths_list:
+            line_path = load_path(file_path)
+            paths.append(line_path)
+
+    section_images = []
+    line_count = len(paths)
+    for line_index in range(line_count -
+                            1):  # |-------- extract sections from loaded paths
+        section_image = extract_char_section_from_image(binary_image, paths[line_index],
+                                                        paths[line_index + 1])
+        section_images.append(section_image)
+    return section_images

@@ -1,14 +1,18 @@
 0) Read image
 
+|-----------------------------------|
+|         LINE SEGMENTATION         |
+|-----------------------------------|
 1) rotate_image()
  A) Hough Transform --> Rotate image to remove undesired skewness
 
 2) get_lines()
-""" A function that takes a binary image and returns the top and bottom Y coordinates of the rectangular sections,
-    that do not contain characters, as well as a number of auxiliary parameters. """
-
+    """
+    A function that takes a binary image and returns the top and bottom Y coordinates of the rectangular sections,
+    that do not contain characters, as well as a number of auxiliary parameters.
+    """
  A) Obtain Y coordinates of lines (peaks) that are above a fine-tuned threshold
-    (9% of peak of image's vertical projection)
+    (9% of peak of image's horizontal projection)
  B) Obtain sections:
     - the starting and ending locations,
     - the max value,
@@ -21,5 +25,27 @@
  E) Remove sections with too small height (may occur due to very short lines with scattered artefacts)
  F) Obtain non-character containing sections,
     Create a bonus line at the top and bottom of the image based on average section height
+
+3) find_paths()
+""" Runs the A* algorithm from a given Y location, from x_min to x_max, repeated for all lines """
+
+4) extract_char_section_from_image
+    """
+    Returns a rectangular section that contain characters using the original image and two consecutive lines from
+    top to bottom
+    """
+ A) Go through the TOP path and annul every location above the path until section's top boundary (path_max)
+ B) GO through the BOTTOM path and annul every location below the path until section's bottom boundary (path_min)
+
+|-----------------------------------|
+|         WORD SEGMENTATION         |
+|-----------------------------------|
+5) segment_words()
+    """
+    """
+    A) Get whitespace lengths in the more dense subsection of a section, w.r.t. the entire line (e.g. no information of
+    whether whitespace length is between words or characters yet)
+    B) Find words with whitespaces which are actually long spaces (word breaks) using the avg_white_space_length
+
 
 
