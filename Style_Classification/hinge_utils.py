@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 def noise_removal(img,morphology=False):
+    #remove unneeded nosie from image
     img = cv2.bitwise_not(img)
     resized_pad_img = img.copy()
     # Filter using contour area and remove small noise
@@ -18,6 +19,7 @@ def noise_removal(img,morphology=False):
     mask = cv2.bitwise_not(mask)
     newimg = (resized_pad_img - mask) 
     newimg = cv2.bitwise_not(newimg)
+    #apply morphological operations if neede to remove excess noise
     if morphology:
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
         newimg = cv2.morphologyEx(newimg, cv2.MORPH_CLOSE, kernel)
@@ -68,6 +70,7 @@ def get_chisquared(feature_vector,style_pdf):
         if feature_vector[i] == 0 and style_pdf[i] == 0 :
             continue
         chi += (feature_vector[i]-style_pdf[i])**2 / (feature_vector[i]+style_pdf[i])
+        
     return chi/2
     
 

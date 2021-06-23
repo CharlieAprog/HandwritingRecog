@@ -11,6 +11,7 @@ from sklearn.metrics import plot_confusion_matrix
 from sklearn.calibration import CalibratedClassifierCV
 
 def get_numpy_arrays(dict,map):
+    #convert dict into numpy
     x,y = [],[]
     for label, item in dict.items():
         for image in item: 
@@ -20,12 +21,14 @@ def get_numpy_arrays(dict,map):
     return x,y
 
 def get_hog(set):
+##get histogram of oriented gradients for a data split set
     set = [hog(image,orientations=8, pixels_per_cell=(6, 6),
                     cells_per_block=(1, 1)) for image in set]
     return set
 
 
 def get_char_images(style_path: str, character: str):
+## loads data as dictionary with given label
     """ Returns a list of numpy arrays, where each arrays corresponds to an image from a certain character of a
     certain class """
     list_for_glob = style_path + character + '/*.png'
@@ -34,6 +37,7 @@ def get_char_images(style_path: str, character: str):
     assert len(img_list) > 0, "Trying to read image files while being in a wrong folder."
     return img_list
 
+#conversion of data into numbers for classification
 characters = ['Alef','Ayin','Bet','Dalet','Gimel','He','Het','Kaf','Kaf-final','Lamed','Mem','Mem-medial',
             'Nun-final','Nun-medial','Pe','Pe-final','Qof','Resh','Samekh','Shin'
             ,'Taw','Tet','Tsadi-final','Tsadi-medial','Waw','Yod','Zayin']
@@ -42,6 +46,7 @@ character_map = {'Alef':0,'Ayin':1,'Bet':2,'Dalet':3,'Gimel':4,'He':5,'Het':6,'K
             'Mem':10,'Mem-medial':11,'Nun-final':12,'Nun-medial':13,'Pe':14,'Pe-final':15,'Qof':16,'Resh':17,
             'Samekh':18,'Shin':19,'Taw':20,'Tet':21,'Tsadi-final':22,'Tsadi-medial':23,'Waw':24,'Yod':25,'Zayin':26}
 
+#training,testing,testing without augmnented data part
 path =  'C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/data/Char_Recog/final_char_data/'
 train_path = path + 'train/'
 test_path = path + 'val/'
@@ -57,10 +62,12 @@ test_set_nomorph = {char:
                 [img for img in get_char_images(test_path_nomorph, char)]
                 for char in characters}
 
+#convert from dict to numpy arrays; ready to use for classifier
 trainx,trainy=  get_numpy_arrays(train_set,character_map)
 testx,testy=  get_numpy_arrays(test_set,character_map)
 testx_nomorph,testy_nomorph = get_numpy_arrays(test_set_nomorph,character_map)  
 
+#Get HOG for all data
 trainy = np.asarray(trainy).flatten()
 testy = np.asarray(testy).flatten()
 testy_nomorph = np.asarray(testy_nomorph).flatten()
@@ -68,24 +75,23 @@ trainx = np.asarray(get_hog(trainx))
 testx= np.asarray(get_hog(testx))
 testx_nomorph = np.asarray(get_hog(testx_nomorph))
 
+#pca fit into training set
 pca = PCA(n_components=200)
 pca.fit(trainx)
 
+#transform all data with PCA
 trainx= pca.transform(trainx)
 testx =pca.transform(testx)
 testx_nomorph = pca.transform(testx_nomorph)
 
+#fit svm and calculate pdf or given prediction
 svm = svm.SVC()
 clf = CalibratedClassifierCV(svm) 
 clf.fit(trainx, trainy)
 
-predict =  clf.predict(testx_nomorph)
-
 pdf = clf.predict_proba(testx_nomorph)
-print(pdf.sum())
-print(pdf.shape)
-
-
+predict = clf.predict(testx_nomorph)
+#predict accuracy + confusion matrix
 print('accuracy on test no morph set:',accuracy_score(testy_nomorph,predict))
 plot_confusion_matrix(clf,X=testx_nomorph, y_true= testy_nomorph)
 plt.show()
