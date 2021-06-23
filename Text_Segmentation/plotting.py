@@ -44,7 +44,7 @@ def handle_saving(plotting_function):
     return wrapper_function
 
 
-@handle_saving
+# @handle_saving
 def plot_hist(hist,
               y_threshold,
               save=False,
@@ -61,9 +61,9 @@ def plot_hist(hist,
     plt.yticks(fontsize=fs - 5)
     plt.xticks(fontsize=fs - 5)
     plt.grid()
+    plt.show()
 
-
-@handle_saving
+# @handle_saving
 def plot_hist_lines_on_image(newImage,
                              midlines,
                              save=False,
@@ -77,9 +77,9 @@ def plot_hist_lines_on_image(newImage,
                 plt.axhline(y=loc, color="r", linestyle="-")
             else:
                 plt.axhline(y=loc, color="b", linestyle="-")
+    plt.show()
 
-
-@handle_saving
+# @handle_saving
 def plot_paths_next_to_image(binary_image,
                              paths,
                              save=False,
@@ -93,9 +93,9 @@ def plot_paths_next_to_image(binary_image,
     ax[0].axis("off")
     ax[1].imshow(binary_image, cmap="gray")
     ax[0].imshow(binary_image, cmap="gray")
+    plt.show()
 
-
-@handle_saving
+# @handle_saving
 def plot_hough_transform(hspace,
                          theta,
                          dist,
@@ -140,7 +140,7 @@ def plot_hough_transform(hspace,
     ax[3].imshow(newImage, cmap='gray')
 
     plt.tight_layout()
-
+    plt.show()
 
 def plot_simple_images(image_list, title=None):
     fig, ax = plt.subplots(nrows=len(image_list), figsize=(5, 6))

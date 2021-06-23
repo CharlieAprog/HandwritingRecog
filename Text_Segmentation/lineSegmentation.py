@@ -253,10 +253,7 @@ def load_path(file_name):
     return np.loadtxt(file_name, delimiter=',', dtype=int)
 
 
-def line_segmentation(image_num):
-    img_path = f'../data/image-data/binaryRenamed/{image_num}.jpg'
-    new_folder_path = f"../data/image-data/paths/{os.path.basename(img_path).split('.')[0]}"
-
+def line_segmentation(img_path, new_folder_path):
     image = get_image(img_path)
     image = rotate_image(image)
     binary_image = get_binary(image)
@@ -287,7 +284,6 @@ def line_segmentation(image_num):
         for idx, path in enumerate(paths):
             save_path(path, f"{new_folder_path}/path_{idx}.csv")
     else:
-        print(f"Loading line segmentation of image {image_num}...")
         # load paths
         file_paths_list = sorted(glob.glob(f'{new_folder_path}/*.csv'),
                                  key=get_key)
