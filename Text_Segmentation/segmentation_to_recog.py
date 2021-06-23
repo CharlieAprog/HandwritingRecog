@@ -8,45 +8,48 @@ import torchvision.transforms as transforms
 import seaborn as sn
 from sklearn.metrics import confusion_matrix
 
-class TheRecognizer(nn.Module):
-  def __init__(self):
-    super(TheRecognizer, self).__init__()
-    self.conv_layers = nn.Sequential(
-        nn.Conv2d(in_channels=1, out_channels=10, kernel_size=5,stride=1, padding=0),
-        nn.BatchNorm2d(10),
-        nn.ReLU(),
-        nn.MaxPool2d(kernel_size=2, stride=2),
-        nn.Conv2d(10, 15, 5, 1, 0),
-        nn.BatchNorm2d(15),
-        nn.ReLU(),
-        nn.MaxPool2d(kernel_size=2, stride=2),
-    )
-    self.lin_layers = nn.Sequential(
-        nn.Linear(7*7*15, 300),
-        nn.ReLU(),
-        nn.Linear(300, 27),
-        nn.LogSoftmax(dim=1)
-    )
-    self.opt = torch.optim.Adam(params=self.parameters(), weight_decay=0.002)
 
-  def forward(self, x):
+class TheRecognizer(nn.Module):
+    def __init__(self):
+        super(TheRecognizer, self).__init__()
+        self.conv_layers = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=10, kernel_size=5, stride=1, padding=0),
+            nn.BatchNorm2d(10),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(10, 15, 5, 1, 0),
+            nn.BatchNorm2d(15),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+        )
+        self.lin_layers = nn.Sequential(
+            nn.Linear(7 * 7 * 15, 300),
+            nn.ReLU(),
+            nn.Linear(300, 27),
+            nn.LogSoftmax(dim=1)
+        )
+        self.opt = torch.optim.Adam(params=self.parameters(), weight_decay=0.002)
+
+    def forward(self, x):
         x = self.conv_layers(x)
-        x = x.view(-1, 7*7*15)
+        x = x.view(-1, 7 * 7 * 15)
         x = self.lin_layers(x)
 
         return x
-  def load_checkpoint(self, ckpt_path, map_location=None):
+
+    def load_checkpoint(self, ckpt_path, map_location=None):
         ckpt = torch.load(ckpt_path, map_location=map_location)
         print(' [*] Loading checkpoint from %s succeed!' % ckpt_path)
         return ckpt
 
-  def save_checkpoint(self, state, save_path):
+    def save_checkpoint(self, state, save_path):
         torch.save(state, save_path)
 
-  def load_model(self, ckpt):
+    def load_model(self, ckpt):
         self.epoch = ckpt['epoch']
         self.load_state_dict(ckpt['weights'])
         self.opt.load_state_dict(ckpt['optimizer'])
+
 
 # input: image, new_height, new_width
 # output: the same image but resized, padded with
@@ -72,9 +75,10 @@ def resize_pad(img, height_all, width_all):
         bottom_pad = top_pad
         if top_pad + bottom_pad + new_height != 40:
             bottom_pad += 1
-        resized_pad_img = cv2.copyMakeBorder(resized_img, top_pad, bottom_pad, 0, 0, cv2.BORDER_CONSTANT,value = 0)
+        resized_pad_img = cv2.copyMakeBorder(resized_img, top_pad, bottom_pad, 0, 0, cv2.BORDER_CONSTANT, value=0)
 
     return resized_pad_img
+
 
 # given the model and an images this resizes the image to (40, 40)
 # feeds it to the model and returns the label_idx and the probability of the label_idx
@@ -103,9 +107,11 @@ def get_label_probability(img, model):
     char_probs = np.exp(out) / (np.exp(out)).sum()
 
     return pred_label, char_probs[0][pred_label]
+
+
 if __name__ == '__main__':
     # two dicts one from label names to idx
-    name2idx = {'Alef': 0, 'Ayin': 1, 'Bet': 2, 'Dalet': 3, 'Gimel' : 4, 'He': 5,
+    name2idx = {'Alef': 0, 'Ayin': 1, 'Bet': 2, 'Dalet': 3, 'Gimel': 4, 'He': 5,
                 'Het': 6, 'Kaf': 7, 'Kaf-final': 8, 'Lamed': 9, 'Mem': 10,
                 'Mem-medial': 11, 'Nun-final': 12, 'Nun-medial': 13, 'Pe': 14,
                 'Pe-final': 15, 'Qof': 16, 'Resh': 17, 'Samekh': 18, 'Shin': 19,
@@ -118,20 +124,15 @@ if __name__ == '__main__':
     model.load_model(model.load_checkpoint('40_char_rec.ckpt', map_location=torch.device('cpu')))
 
 
-
     class ThresholdTransform(object):
-      def __init__(self, thr_255):
-        self.thr = thr_255 / 255.  # input threshold for [0..255] gray level, convert to [0..1]
+        def __init__(self, thr_255):
+            self.thr = thr_255 / 255.  # input threshold for [0..255] gray level, convert to [0..1]
 
-      def __call__(self, x):
-        return (x < self.thr).to(x.dtype)  # do not change the data type
+        def __call__(self, x):
+            return (x < self.thr).to(x.dtype)  # do not change the data type
+
+
     bin_transform = transforms.Compose([
         transforms.ToTensor(),
         ThresholdTransform(thr_255=250)
     ])
-
-
-
-
-
-

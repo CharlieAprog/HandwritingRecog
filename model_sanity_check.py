@@ -1,4 +1,4 @@
-from segmentation_to_recog import *
+from Text_Segmentation.segmentation_to_recog import *
 
 # two dicts one from label names to idx
 name2idx = {'Alef': 0, 'Ayin': 1, 'Bet': 2, 'Dalet': 3, 'Gimel': 4, 'He': 5,

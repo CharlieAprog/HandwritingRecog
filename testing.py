@@ -50,7 +50,7 @@ def clean_image(image, thresh_side, thresh_mid, trim_thresh= 10):
     new = remove_character_artifacts(image, min_cluster= thresh_side, internal_min_cluster=thresh_mid)
     if new.size == 0:
         new = image
-    new = trim_360(new, line_thresh=trim_thresh)
+    new = trim_360(new, section_thresh=trim_thresh)
     plot_simple_images([image, new], title='example')
 
 for image in  all_archaic:
