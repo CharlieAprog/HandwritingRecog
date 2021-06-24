@@ -143,9 +143,12 @@ def get_char_vector(img):
     #returns pdf of hinge features (f2) for one image
     # img,mask = noise_removal(img)
     # apply canny to detect the contours of the char
+    img = np.uint8(img)
     img[img==1]=255
+    # img = cv2.GaussianBlur(img,(5,5),0)
     # plt.imshow(img)
     # plt.show()
+    
     corners_of_img = cv2.Canny(img, 0, 100)
     cont_img = np.asarray(corners_of_img)
     # get the coordinates of the contour pixels
@@ -282,7 +285,7 @@ def get_style_char_vec(characters,labels):
 
     return style_char_vec,chi_squared_vec
 
-def get_dominant_style(style_vec,chisquared_vec,n_neighbors = 10):
+def get_dominant_style(style_vec,chisquared_vec,n_neighbors):
     style_vec = [sorting for _, sorting in sorted(zip(chisquared_vec, style_vec))]    
     return   Counter(style_vec[:n_neighbors])
 

@@ -6,8 +6,8 @@ import imutils
 import os
 import csv
 import glob
-from plotting import *
-from aStar import *
+from Text_Segmentation.plotting import *
+from Text_Segmentation.aStar import *
 
 
 def timer(original_func):
@@ -257,7 +257,9 @@ def load_path(file_name):
 def line_segmentation(img_path, new_folder_path):
     image = get_image(img_path)
     image = rotate_image(image)
-    binary_image = get_binary(image)
+    first = get_binary(image)
+    binary_image = cv2.dilate(first, (2,2), iterations=1)
+    plot_simple_images([first, binary_image])
 
     if not os.path.exists(new_folder_path):
         print("Running line segmentation on new image...")

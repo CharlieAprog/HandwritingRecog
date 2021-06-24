@@ -21,6 +21,7 @@ def get_sliding_words(words_in_lines, window_size, shift):
     for line in words_in_lines:
         sliding_words = []
         for word in line:
+            
             sliding_words.append(slide_over_word(word, window_size, shift))
         sliding_words_in_line.append(sliding_words)
     return sliding_words_in_line
