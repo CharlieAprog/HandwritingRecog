@@ -111,18 +111,18 @@ def plot_hough_transform(hspace,
     ax[0].set_title('Input image')
     ax[0].set_axis_off()
 
-    # Axis 1
-    ax[1].imshow(np.log(1 + hspace),
-                 extent=[
-                     np.rad2deg(theta[-1]),
-                     np.rad2deg(theta[0]), dist[-1], dist[0]
-                 ],
-                 cmap='gray',
-                 aspect=1 / 1.5)
-    ax[1].set_title('Hough transform')
-    ax[1].set_xlabel('Angles (degrees)')
-    ax[1].set_ylabel('Distance (pixels)')
-    ax[1].axis('image')
+    # # Axis 1
+    # ax[1].imshow(np.log(1 + hspace),
+    #              extent=[
+    #                  np.rad2deg(theta[-1]),
+    #                  np.rad2deg(theta[0]), dist[-1], dist[0]
+    #              ],
+    #              cmap='gray',
+    #              aspect=1 / 1.5)
+    # ax[1].set_title('Hough transform')
+    # ax[1].set_xlabel('Angles (degrees)')
+    # ax[1].set_ylabel('Distance (pixels)')
+    # ax[1].axis('image')
 
     # Axis 2
     ax[2].imshow(image, cmap='gray')

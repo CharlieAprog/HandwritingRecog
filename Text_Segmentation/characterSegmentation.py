@@ -1,6 +1,7 @@
 from Text_Segmentation.plotting import *
 from Text_Segmentation.lineSegmentation import calc_outlier
 from Text_Segmentation.wordSegmentation import trim_360
+from Text_Segmentation.segmentation_to_recog import get_label_probability
 import itertools
 import copy
 from typing import List
@@ -57,7 +58,6 @@ def get_bounding_box_boundaries(image, clusters) -> List[List[list]]:
             x_min -= 1
         box_boundaries.append([[y_max, y_min], [x_min, x_max]])
     return box_boundaries
-
 
 def dialate_clusters(word, kernel=(5, 3)):
     kernel = np.ones(kernel, np.uint8)
@@ -286,6 +286,61 @@ def destructure_characters(characters_in_line):
 
     return characters
 
+def clean_image(image, thresh_side=500, thresh_mid=30, trim_thresh=10):
+    # image = get_binary(image)
+    image = image.astype(np.uint8)
+    new = remove_character_artifacts(image, min_cluster=thresh_side, internal_min_cluster=thresh_mid)
+    if new.size == 0:
+        new = image
+    new = trim_360(new, section_thresh=trim_thresh)
+    return new
+
+
+def select_slides(sliding_characters, predicted_char_num, model, window_size, name2idx):
+    shift = 1
+    chosen_characters = 2
+
+    first = trim_360(sliding_characters[0])
+    first_label, _ = get_label_probability(first, model)
+    last = trim_360(sliding_characters[-1])
+    last_label, _ = get_label_probability(last, model)
+
+    recognised_characters = [first]
+    labels = [first_label]
+    print(window_size)
+    prev_letter_start = 0
+    start_idx = 0
+    while chosen_characters < predicted_char_num:
+        best_prob = 0
+        chosen_slide = 0
+        chosen_label = 0
+        for idx, slide in enumerate(sliding_characters[start_idx:]):
+            start = shift * idx
+            end = start + window_size
+            begin_limit = int(prev_letter_start + window_size * 0.75)
+            end_limit = int(prev_letter_start + window_size * 0.75 + window_size + window_size * 0.6)
+            # print(begin_limit, end_limit)
+            if start >= begin_limit and end <= end_limit:
+                trimmed_slide = trim_360(slide)
+                predicted_label, probability = get_label_probability(trimmed_slide, model)
+                predicted_letter = list(name2idx.keys())[predicted_label]
+                print(f'Predicted label:{predicted_letter} probabilty:{probability}')
+                print(f"window: [{shift * idx}-{window_size + shift * idx}]")
+                if probability > best_prob:
+                    best_prob = probability
+                    chosen_slide = trimmed_slide
+                    chosen_label = predicted_label
+                    temp_idx = idx
+        chosen_characters += 1
+        print('letter chosen')
+        start_idx = temp_idx
+        recognised_characters.append(clean_image(chosen_slide))
+        labels.append(chosen_label)
+        prev_letter_start = 0
+
+    recognised_characters.append(last)
+    labels.append(last_label)
+    return recognised_characters, labels
 
 def character_segmentation(words_in_lines):
     # Get all characters from all words

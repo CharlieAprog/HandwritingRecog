@@ -6,6 +6,7 @@ import imutils
 import os
 import csv
 import glob
+import copy
 from Text_Segmentation.plotting import *
 from Text_Segmentation.aStar import *
 
@@ -27,7 +28,7 @@ def timer(original_func):
 def get_image(img_path):
     """ Reads and returns a binary image from given path. """
     image = cv2.imread(img_path, 0)
-    image = cv2.bitwise_not(image)
+    # image = cv2.bitwise_not(image)
     assert len(image.shape) == 2, "Trying to read image while being in a wrong folder, or provided path is wrong."
     return image
 
@@ -41,48 +42,47 @@ def get_binary(img):
     thresh = threshold_otsu(img)
     binary = img <= thresh
     binary = binary * 1
-    return binary
+    return binary.astype(np.uint8)
 
 
-def rotate_image(image):
-    """
-    A function that takes a binary image and rotates it until the lines found by Hough-Transform become
-    perpendicular or close to perpendicular to the vertical axis.
+# def rotate_image(image):
+#     """
+#     A function that takes a binary image and rotates it until the lines found by Hough-Transform become
+#     perpendicular or close to perpendicular to the vertical axis.
 
-    Returns a rotated binary image.
-    """
+#     Returns a rotated binary image.
+#     """
 
-    # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
-    tested_angles = np.linspace(-np.pi * 40 / 100, -np.pi * 50 / 100, 100)
-    hspace, theta, dist, = hough_line(image, tested_angles)
-    h, q, d = hough_line_peaks(hspace, theta, dist)
+#     # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
+#     tested_angles = np.linspace(-np.pi * 40 / 100, -np.pi * 50 / 100, 100)
+#     hspace, theta, dist, = hough_line(image, tested_angles)
+#     h, q, d = hough_line_peaks(hspace, theta, dist)
 
-    angle_list = []  # Create an empty list to capture all angles
-    dist_list = []
-    origin = np.array((0, image.shape[1]))
-    for _, angle, dist in zip(*hough_line_peaks(
-            hspace, theta, dist, min_distance=50, threshold=0.76 *
-                                                            np.max(hspace))):
-        # Not for plotting but later calculation of angles
-        angle_list.append(angle)
-        dist_list.append(dist)
-        y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
-        # ax[2].plot(origin, (y0, y1), '-r')
-    ave_angle = np.mean(angle_list)
-    ave_dist = np.mean(dist_list)
-    x0, x1 = (ave_dist - origin * np.cos(ave_angle)) / np.sin(ave_angle)
+#     angle_list = []  # Create an empty list to capture all angles
+#     dist_list = []
+#     origin = np.array((0, image.shape[1]))
+#     for _, angle, dist in zip(*hough_line_peaks(
+#             hspace, theta, dist, min_distance=50, threshold=0.76 *
+#                                                             np.max(hspace))):
+#         # Not for plotting but later calculation of angles
+#         angle_list.append(angle)
+#         dist_list.append(dist)
+#         y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
+#         # ax[2].plot(origin, (y0, y1), '-r')
+#     ave_angle = np.mean(angle_list)
+#     ave_dist = np.mean(dist_list)
+#     x0, x1 = (ave_dist - origin * np.cos(ave_angle)) / np.sin(ave_angle)
 
-    # Convert angles from radians to degrees (1 rad = 180/pi degrees)
-    angles = [a * 180 / np.pi for a in angle_list]
-    change = 90 - -1 * np.mean(angles)
-    new_image = cv2.bitwise_not(imutils.rotate_bound(image, -change))
+#     # Convert angles from radians to degrees (1 rad = 180/pi degrees)
+#     angles = [a * 180 / np.pi for a in angle_list]
+#     change = 90 - -1 * np.mean(angles)
+#     new_image = cv2.bitwise_not(imutils.rotate_bound(image, -change))
 
-    # plotHoughTransform(hspace, theta, dist, x0, x1, origin, new_image)
+#     plot_hough_transform(hspace, theta, dist, x0, x1, origin,image,new_image)
+#     # Compute difference between the two lines
+#     angle_difference = np.max(angles) - np.min(angles)
 
-    # Compute difference between the two lines
-    angle_difference = np.max(angles) - np.min(angles)
-
-    return new_image
+#     return new_image
 
 
 def calc_outlier(data, method="std"):
@@ -256,9 +256,11 @@ def load_path(file_name):
 
 def line_segmentation(img_path, new_folder_path):
     image = get_image(img_path)
-    image = rotate_image(image)
+    # image = rotate_image(image)
     first = get_binary(image)
-    binary_image = cv2.dilate(first, (2,2), iterations=1)
+    binary_image = copy.deepcopy(first)
+    kernel = np.ones((2, 2), 'uint8')
+    binary_image = cv2.dilate(binary_image, kernel, iterations=1)
     plot_simple_images([first, binary_image])
 
     if not os.path.exists(new_folder_path):
@@ -295,12 +297,74 @@ def line_segmentation(img_path, new_folder_path):
         for file_path in file_paths_list:
             line_path = load_path(file_path)
             paths.append(line_path)
+        assert len(paths) > 0, "Trying to load paths from an empty folder, delete folder and run A* again."
 
     section_images = []
     line_count = len(paths)
     for line_index in range(line_count -
                             1):  # |-------- extract sections from loaded paths
         section_image = extract_char_section_from_image(binary_image, paths[line_index],
-                                                        paths[line_index + 1])
+                                                      paths[line_index + 1])
         section_images.append(section_image)
     return section_images
+
+
+def rotate_image(image):
+    # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
+    tested_angles = np.linspace(-np.pi * 45 / 100, -np.pi * 55 / 100, 100)
+    hspace, theta, dist, = hough_line(image, tested_angles)
+
+    h, q, d = hough_line_peaks(hspace, theta, dist)
+
+    #################################################################
+    # Example code from skimage documentation to plot the detected lines
+    angle_list = []  # Create an empty list to capture all angles
+    dist_list = []
+    # Generating figure 1
+    fig, axes = plt.subplots(1, 4, figsize=(15, 6))
+    ax = axes.ravel()
+    ax[0].imshow(image, cmap='gray')
+    ax[0].set_title('Input image')
+    ax[0].set_axis_off()
+    ax[1].imshow(np.log(1 + hspace),
+                 extent=[np.rad2deg(theta[-1]), np.rad2deg(theta[0]), dist[-1], dist[0]],
+                 cmap='gray', aspect=1/1.5)
+    ax[1].set_title('Hough transform')
+    ax[1].set_xlabel('Angles (degrees)')
+    ax[1].set_ylabel('Distance (pixels)')
+    ax[1].axis('image')
+    ax[2].imshow(image, cmap='gray')
+    origin = np.array((0, image.shape[1]))
+
+    for _, angle, dist in zip(*hough_line_peaks(hspace, theta, dist, min_distance=50, threshold=0.76 * np.max(hspace))):
+        angle_list.append(angle)  # Not for plotting but later calculation of angles
+        dist_list.append(dist)
+        y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
+        ax[2].plot(origin, (y0, y1), '-r')
+
+    ave_angle = np.mean(angle_list)
+    ave = ave_angle * 180 / np.pi
+    ave_dist = np.mean(dist_list)
+    x0, x1 = (ave_dist - origin * np.cos(ave_angle)) / np.sin(ave_angle)
+
+    ax[2].plot(origin, (x0, x1), '-b')
+    ax[2].set_xlim(origin)
+    ax[2].set_ylim((image.shape[0], 0))
+    ax[2].set_axis_off()
+    ax[2].set_title('Detected lines')
+
+    ###############################################################
+    # Convert angles from radians to degrees (1 rad = 180/pi degrees)
+    angles = [a * 180 / np.pi for a in angle_list]
+    change = 90 - -1 * np.mean(angles)
+    newImage = imutils.rotate_bound(image, -change)
+    ax[3].imshow(newImage, cmap='gray')
+    plt.tight_layout()
+    plt.show()
+
+    # plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage)
+
+    # Compute difference between the two lines
+    angle_difference = np.max(angles) - np.min(angles)
+
+    return newImage
