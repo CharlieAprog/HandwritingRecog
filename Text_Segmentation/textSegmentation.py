@@ -1,3 +1,7 @@
+import sys
+sys.path.append('C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog')
+sys.path.append('C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/Text_Segmentation/plotting.py')
+from Style_Classification.feature_detection import *
 import numpy as np
 from plotting import plot_simple_images
 import torch
@@ -67,8 +71,8 @@ def select_slides(sliding_characters, predicted_char_num, model, window_size, na
 
 
 image_num = 10
-dev_path = f"../data/image-data/binaryRenamed/{image_num}.jpg"  # development path
-new_folder_path = f"../data/image-data/paths/{image_num}"
+dev_path = f"C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/data/cropped_labeled_images/archaic2.jpg"  # development path
+new_folder_path = f"data/image-data/paths/herodian1"
 
 # periods_path = "../data/full_images_periods/Hasmonean/hasmonean-330-1.jpg"
 # new_folder_path = f"../data/full_images_periods/Hasmonean/paths/{os.path.basename(periods_path).split('.')[0]}"
@@ -78,7 +82,7 @@ lines, words_in_lines = word_segmentation(section_images)
 characters, single_character_widths, mean_character_width = character_segmentation(words_in_lines)
 
 model = TheRecognizer()
-model.load_model(model.load_checkpoint('../40_char_rec.ckpt', map_location=torch.device('cpu')))
+model.load_model(model.load_checkpoint('C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/40_char_rec.ckpt', map_location=torch.device('cpu')))
 name2idx = {'Alef': 0, 'Ayin': 1, 'Bet': 2, 'Dalet': 3, 'Gimel': 4, 'He': 5,
             'Het': 6, 'Kaf': 7, 'Kaf-final': 8, 'Lamed': 9, 'Mem': 10,
             'Mem-medial': 11, 'Nun-final': 12, 'Nun-medial': 13, 'Pe': 14,
@@ -115,4 +119,11 @@ for char_idx, character_segment in enumerate(characters):
         plot_simple_images([character_segment], title=f'{predicted_label + 1}:{predicted_letter}')
         all_segmented_characters.append(character_segment)
         all_segmented_labels.append(int(predicted_label))
+all_segmented_labels = np.asarray(all_segmented_labels)
+
+print('Getting style classification for all chararcters:')
+style_vec,chi_squared_vec = get_style_char_vec(all_segmented_characters,all_segmented_labels)
+n_neighbors = 10
+dominant_style = get_dominant_style(style_vec,chi_squared_vec,n_neighbors)
+print(dominant_style)
     # print(f"window: [{shift*idx}-{window_size + shift*idx}]")

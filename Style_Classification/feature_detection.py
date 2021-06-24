@@ -1,18 +1,15 @@
 import math
 import cv2
-<<<<<<< HEAD
 from skimage import feature
-from dim_reduction import get_style_char_images
-=======
-import glob
->>>>>>> 0e9ca8c03314e8e69eb95e12dcb1b30dca2899e7
-from hinge_utils import *
+from Style_Classification.hinge_utils import *
 # from segmentation_to_recog import resize_pad
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
 from scipy import stats
 from sklearn.decomposition import PCA
+import glob
+from collections import Counter
 
 PI = 3.14159265359
 
@@ -28,13 +25,8 @@ def get_style_char_images(style_path: str, character: str):
 
 
 def get_angle(x_origin, y_origin, x_up, y_up):
-<<<<<<< HEAD
     #get angle for hinge pdf (ph1 or phi2)
     output = math.degrees(math.atan2(y_up-y_origin,x_up-x_origin))
-=======
-    output = math.degrees(math.atan2(y_up - y_origin, x_up - x_origin))
-
->>>>>>> 0e9ca8c03314e8e69eb95e12dcb1b30dca2899e7
     if output < 0:
         output = 180 + (180 + output)
 
@@ -149,13 +141,13 @@ def get_hinge_pdf(img_label, imgs):
 
 def get_char_vector(img):
     #returns pdf of hinge features (f2) for one image
-    image= cv2.GaussianBlur(img,(5,5),0)
-    img,mask = noise_removal(image)
-
+    # img,mask = noise_removal(img)
     # apply canny to detect the contours of the char
+    img[img==1]=255
+    # plt.imshow(img)
+    # plt.show()
     corners_of_img = cv2.Canny(img, 0, 100)
     cont_img = np.asarray(corners_of_img)
-
     # get the coordinates of the contour pixels
     contours = np.where(cont_img == 255)
     list_of_cont_cords = list(zip(contours[0], contours[1]))
@@ -203,8 +195,100 @@ def get_char_vector(img):
     #return pdf
     return [element/sum(feature_vector) for element in feature_vector]
 
+def get_style_char_vec(characters,labels):
+    #main pipeline function to get char
+    style_char_vec = []
+    chi_squared_vec = []
+    style_base_path = 'data/characters_for_style_classification_balance_morph/'
+    
+    archaic_characters = ['Taw', 'Pe', 'Kaf-final', 'Lamed', 'Nun-final', 'He', 'Qof', 'Kaf', 'Samekh', 'Yod', 'Dalet',
+                          'Waw', 'Ayin', 'Mem', 'Gimel', 'Bet', 'Shin', 'Resh', 'Alef', 'Het']
+
+    hasmonean_characters = ['Taw', 'Pe', 'Kaf-final', 'Lamed', 'Tet', 'Nun-final', 'Tsadi-final', 'He', 'Qof', 'Kaf',
+                            'Samekh', 'Yod', 'Dalet', 'Waw', 'Ayin', 'Mem-medial', 'Nun-medial', 'Mem', 'Pe-final',
+                            'Gimel',
+                            'Bet', 'Shin', 'Resh', 'Zayin', 'Alef', 'Tsadi-medial', 'Het']
+
+    herodian_characters = ['Taw', 'Pe', 'Kaf-final', 'Lamed', 'Tet', 'Nun-final', 'Tsadi-final', 'He', 'Qof', 'Kaf',
+                           'Samekh', 'Yod', 'Dalet', 'Waw', 'Ayin', 'Mem-medial', 'Nun-medial', 'Mem', 'Pe-final',
+                           'Gimel',
+                           'Bet', 'Shin', 'Resh', 'Zayin', 'Alef', 'Tsadi-medial', 'Het']
+
+    # Retrieve img lists from each class' each character AND resize them
+    new_size = (50, 50)  # change this to something which is backed up by a reason
+
+#get image dict
+    archaic_imgs = {char:
+                    [cv2.resize(img, new_size) for img in get_style_char_images(style_base_path +'Archaic/' , char)]
+                    for char in archaic_characters}
+    hasmonean_imgs ={char:
+                    [cv2.resize(img, new_size) for img in get_style_char_images(style_base_path +'Hasmonean/', char)]
+                    for char in hasmonean_characters}
+    herodian_imgs = {char:
+                     [cv2.resize(img, new_size) for img in get_style_char_images(style_base_path +'Herodian/', char)]
+                     for char in herodian_characters}
+    idx2name = {0: 'Alef', 1: 'Ayin', 2: 'Bet', 3:'Dalet', 4: 'Gimel', 5:'He',
+            6: 'Het', 7: 'Kaf', 8: 'Kaf-final', 9:'Lamed', 10: 'Mem',
+            11: 'Mem-medial', 12: 'Nun-final', 13: 'Nun-medial', 14: 'Pe',
+            15: 'Pe-final', 16: 'Qof', 17: 'Resh', 18: 'Samekh', 19: 'Shin',
+            20: 'Taw', 21: 'Tet', 22: 'Tsadi-final', 23: 'Tsadi-medial',
+            24: 'Waw', 25: 'Yod', 26: 'Zayin'}
+    
+    archaic_pdfs={}
+    hasmonean_pdfs ={}
+    herodian_pdfs = {}
+
+    for image,label in zip(characters,labels):
+        if (label == 21 or label == 22 or label == 13 or label == 11
+                    or label == 15 or label ==  26 or label == 23):
+            if idx2name[label] not in hasmonean_pdfs: 
+                hasmonean_pdfs[idx2name[label]] = get_hinge_pdf(idx2name[label], hasmonean_imgs)
+            if idx2name[label] not in herodian_pdfs: 
+                herodian_pdfs[idx2name[label]] = get_hinge_pdf(idx2name[label], herodian_imgs)    
+                
+            # get feature vector of given char and get chisquared for each pdf 
+            feature_vector = get_char_vector(image)   
+            chihasmonean = get_chisquared(feature_vector,hasmonean_pdfs[idx2name[label]])
+            chiherodian = get_chisquared(feature_vector,herodian_pdfs[idx2name[label]])
+            minchi = min(chihasmonean,chiherodian)
+                    
+            if minchi == chihasmonean: predicted = 'Hasmonean' 
+            else: predicted = 'Herodian'
+            style_char_vec.append(predicted)
+            chi_squared_vec.append(minchi)
+
+        else:
+            #get hinge pdfs
+            if idx2name[label] not in archaic_pdfs: 
+                archaic_pdfs[idx2name[label]] = get_hinge_pdf(idx2name[label],archaic_imgs)
+            if idx2name[label] not in hasmonean_pdfs: 
+                hasmonean_pdfs[idx2name[label]] = get_hinge_pdf(idx2name[label],hasmonean_imgs)
+            if idx2name[label] not in herodian_pdfs: 
+                herodian_pdfs[idx2name[label]] = get_hinge_pdf(idx2name[label],herodian_imgs)
+
+            #calculate vector for char and chisquared distance
+            feature_vector = get_char_vector(image)            
+            chiarchaic = get_chisquared(feature_vector,archaic_pdfs[idx2name[label]])
+            chihasmonean = get_chisquared(feature_vector,hasmonean_pdfs[idx2name[label]])
+            chiherodian = get_chisquared(feature_vector,herodian_pdfs[idx2name[label]])
+
+            minchi = min(chihasmonean,chiherodian,chiarchaic)
+            #smallest chi squared is the style of char
+            if minchi == chiarchaic: predicted ='Archaic'
+            if minchi == chihasmonean: predicted = 'Hasmonean'
+            if minchi ==chiherodian: predicted = 'Herodian'
+            style_char_vec.append(predicted)
+            chi_squared_vec.append(minchi)
+
+    return style_char_vec,chi_squared_vec
+
+def get_dominant_style(style_vec,chisquared_vec,n_neighbors = 10):
+    style_vec = [sorting for _, sorting in sorted(zip(chisquared_vec, style_vec))]    
+    return   Counter(style_vec[:n_neighbors])
+
+
 def get_accuracy_alldata(dataset,archaic_imgs,hasmonean_imgs,herodian_imgs):
-    ##Get accuracy
+    ##Get accuracy: for finetuning and testing purposes
     cor = 0
     for stylename,styledataset in dataset.items():
         for label,characterset in styledataset.items():
@@ -275,7 +359,7 @@ def get_accuracy_alldata(dataset,archaic_imgs,hasmonean_imgs,herodian_imgs):
 if __name__ == '__main__':
     # / home / jan / PycharmProjects / HandwritingRecog /
     #path for no morph
-    style_base_path = 'C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/data/characters_for_style_classification_balance_morph/'
+    style_base_path = 'data/characters_for_style_classification_balance_morph/'
     style_archaic_path = style_base_path + 'Archaic/'
     style_hasmonean_path = style_base_path + 'Hasmonean/'
     style_herodian_path = style_base_path + 'Herodian/'
@@ -294,7 +378,7 @@ if __name__ == '__main__':
                            'Bet', 'Shin', 'Resh', 'Zayin', 'Alef', 'Tsadi-medial', 'Het']
 
     # Retrieve img lists from each class' each character AND resize them
-    new_size = (50, 50)  # change this to something which is backed up by a reason
+    new_size = (40, 40)  # change this to something which is backed up by a reason
 
 #get image dict
     archaic_imgs = {char:
