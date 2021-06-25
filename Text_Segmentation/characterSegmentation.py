@@ -22,7 +22,6 @@ def get_sliding_words(words_in_lines, window_size, shift):
     for line in words_in_lines:
         sliding_words = []
         for word in line:
-            
             sliding_words.append(slide_over_word(word, window_size, shift))
         sliding_words_in_line.append(sliding_words)
     return sliding_words_in_line
@@ -58,6 +57,7 @@ def get_bounding_box_boundaries(image, clusters) -> List[List[list]]:
             x_min -= 1
         box_boundaries.append([[y_max, y_min], [x_min, x_max]])
     return box_boundaries
+
 
 def dialate_clusters(word, kernel=(5, 3)):
     kernel = np.ones(kernel, np.uint8)
@@ -286,6 +286,7 @@ def destructure_characters(characters_in_line):
 
     return characters
 
+
 def clean_image(image, thresh_side=500, thresh_mid=30, trim_thresh=10):
     # image = get_binary(image)
     image = image.astype(np.uint8)
@@ -342,11 +343,13 @@ def select_slides(sliding_characters, predicted_char_num, model, window_size, na
     labels.append(last_label)
     return recognised_characters, labels
 
+
 def character_segmentation(words_in_lines):
     # Get all characters from all words
     segmented_word_box_images, segmented_word_box_areas, all_box_boundaries = run_character_segment(words_in_lines)
     filtered_word_box_images_all_lines, character_widths = filter_characters(segmented_word_box_areas,
-                                                                             segmented_word_box_images, all_box_boundaries,
+                                                                             segmented_word_box_images,
+                                                                             all_box_boundaries,
                                                                              words_in_lines)
     characters = destructure_characters(filtered_word_box_images_all_lines)
     single_character_widths = [width for width in character_widths if width <= 120]
@@ -369,7 +372,8 @@ def character_segmentation(words_in_lines):
             # plotSimpleImages([eroded_img], title="eroded character")
             eroded_box_img_list, eroded_box_areas = get_box_images(eroded_img_boundaries, eroded_img)
             filtered_eroded_box_img_list = filter_eroded_characters(segmented_word_box_areas, eroded_box_areas,
-                                                                    eroded_box_img_list, eroded_img_boundaries, eroded_img)
+                                                                    eroded_box_img_list, eroded_img_boundaries,
+                                                                    eroded_img)
             if len(eroded_img_boundaries) > len(box_boundaries):
                 changed += 1
                 temp_list = []

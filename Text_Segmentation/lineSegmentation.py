@@ -7,6 +7,7 @@ import os
 import csv
 import glob
 import copy
+from findpeaks import findpeaks
 from Text_Segmentation.plotting import *
 from Text_Segmentation.aStar import *
 
@@ -25,11 +26,15 @@ def timer(original_func):
     return wrapper_function
 
 
-def get_image(img_path):
+def get_image(img_path, hough_transform=True):
     """ Reads and returns a binary image from given path. """
     image = cv2.imread(img_path, 0)
-    # image = cv2.bitwise_not(image)
+    if hough_transform:
+        image = cv2.bitwise_not(image)
     assert len(image.shape) == 2, "Trying to read image while being in a wrong folder, or provided path is wrong."
+    plt.imshow(image, cmap="gray")
+    plt.title("Image right after reading")
+    plt.show()
     return image
 
 
@@ -46,43 +51,64 @@ def get_binary(img):
 
 
 # def rotate_image(image):
-#     """
-#     A function that takes a binary image and rotates it until the lines found by Hough-Transform become
-#     perpendicular or close to perpendicular to the vertical axis.
-
-#     Returns a rotated binary image.
-#     """
-
 #     # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
-#     tested_angles = np.linspace(-np.pi * 40 / 100, -np.pi * 50 / 100, 100)
+#     tested_angles = np.linspace(-np.pi * 45 / 100, -np.pi * 55 / 100, 100)
 #     hspace, theta, dist, = hough_line(image, tested_angles)
+#
 #     h, q, d = hough_line_peaks(hspace, theta, dist)
-
+#
+#     #################################################################
+#     # Example code from skimage documentation to plot the detected lines
 #     angle_list = []  # Create an empty list to capture all angles
 #     dist_list = []
+#     # Generating figure 1
+#     fig, axes = plt.subplots(1, 4, figsize=(15, 6))
+#     ax = axes.ravel()
+#     ax[0].imshow(image, cmap='gray')
+#     ax[0].set_title('Input image')
+#     ax[0].set_axis_off()
+#     ax[1].imshow(np.log(1 + hspace),
+#                  extent=[np.rad2deg(theta[-1]), np.rad2deg(theta[0]), dist[-1], dist[0]],
+#                  cmap='gray', aspect=1 / 1.5)
+#     ax[1].set_title('Hough transform')
+#     ax[1].set_xlabel('Angles (degrees)')
+#     ax[1].set_ylabel('Distance (pixels)')
+#     ax[1].axis('image')
+#     ax[2].imshow(image, cmap='gray')
 #     origin = np.array((0, image.shape[1]))
-#     for _, angle, dist in zip(*hough_line_peaks(
-#             hspace, theta, dist, min_distance=50, threshold=0.76 *
-#                                                             np.max(hspace))):
-#         # Not for plotting but later calculation of angles
-#         angle_list.append(angle)
+#
+#     for _, angle, dist in zip(*hough_line_peaks(hspace, theta, dist, min_distance=50, threshold=0.76 * np.max(hspace))):
+#         angle_list.append(angle)  # Not for plotting but later calculation of angles
 #         dist_list.append(dist)
 #         y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
-#         # ax[2].plot(origin, (y0, y1), '-r')
+#         ax[2].plot(origin, (y0, y1), '-r')
+#
 #     ave_angle = np.mean(angle_list)
+#     ave = ave_angle * 180 / np.pi
 #     ave_dist = np.mean(dist_list)
 #     x0, x1 = (ave_dist - origin * np.cos(ave_angle)) / np.sin(ave_angle)
-
+#
+#     ax[2].plot(origin, (x0, x1), '-b')
+#     ax[2].set_xlim(origin)
+#     ax[2].set_ylim((image.shape[0], 0))
+#     ax[2].set_axis_off()
+#     ax[2].set_title('Detected lines')
+#
+#     ###############################################################
 #     # Convert angles from radians to degrees (1 rad = 180/pi degrees)
 #     angles = [a * 180 / np.pi for a in angle_list]
 #     change = 90 - -1 * np.mean(angles)
-#     new_image = cv2.bitwise_not(imutils.rotate_bound(image, -change))
-
-#     plot_hough_transform(hspace, theta, dist, x0, x1, origin,image,new_image)
+#     newImage = imutils.rotate_bound(image, -change)
+#     ax[3].imshow(newImage, cmap='gray')
+#     plt.tight_layout()
+#     plt.show()
+#
+#     # plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage)
+#
 #     # Compute difference between the two lines
 #     angle_difference = np.max(angles) - np.min(angles)
-
-#     return new_image
+#
+#     return newImage
 
 
 def calc_outlier(data, method="std"):
@@ -105,17 +131,20 @@ def get_lines(new_image):
     Returns the top and bottom Y coordinates of the rectangular sections that do not contain characters,
     as well as a number of auxiliary parameters.
     """
-
     # A) Obtain active pixels in each row (horizontal projection)
-    h_hist = []
-    row_len = new_image.shape[1]
-    for row in new_image:
-        h_hist.append(row_len - len(row.nonzero()[0]))
+    h_hist = [len(row.nonzero()[0]) for row in new_image]
 
-    local_lines = []  # list of pixels in a peak's neighborhood from left to right
+    fp = findpeaks(lookahead=3)
+    result = fp.fit(h_hist)
+    peaks = result['df'][result['df']['peak'] == True]
+    val_peaks = peaks.y.to_list()
+    fp.plot()
+
+    # Identify histogram peaks
     thr_lines = {}  # thresholded lines; containing lines of interest and the horizontal projections thereof
+    local_lines = []  # list of pixels in a peak's neighborhood from left to right
     c = 0  # counter variable
-    thr_num = max(h_hist) * 0.09
+    thr_num = np.mean(val_peaks)
     for idx, line_sum in enumerate(h_hist):
         if line_sum >= thr_num and h_hist[idx - 1] > thr_num and idx > 0:
             local_lines.append(line_sum)
@@ -127,13 +156,29 @@ def get_lines(new_image):
             local_lines = []
             c = 0
 
-    # B) Obtain the starting and ending locations, the max value, and the height of each peak's neighborhood (section)
+    # B) Obtain the starting and ending locations, and the height of each peak's neighborhood (section)
     locations = []
     for idx, line in enumerate(thr_lines.items()):
         y_loc_start = line[0]
         line_projections = line[1]  # line projections within the neighbourhood of the current peak
         height = len(line_projections)
         locations.append([y_loc_start, y_loc_start + height])  # starting and ending location of the section
+
+    section_heights = [x[1] - x[0] for x in locations]
+    avg_sh = np.mean(section_heights)
+    buffer = int(avg_sh * 0.5)
+    fp = findpeaks(lookahead=20)
+    result = fp.fit(h_hist)
+    peaks = result['df'][result['df']['peak'] == True]
+    loc_peaks = peaks.x.to_list()
+    for peak in loc_peaks:
+        contained = False
+        for loc in locations:
+            if loc[1] > peak > loc[0]:
+                contained = True
+        if not contained:
+            locations.append([peak - buffer, peak + buffer])
+    locations = sorted(locations, key=lambda x: x[0])
 
     # C) Combining sections that are too close together
     # distances between consecutive sections (SEC_n+1_top - SEC_n_bottom)
@@ -142,8 +187,9 @@ def get_lines(new_image):
         for sec in range(len(locations) - 1)
     ]
     min_distance = calc_outlier(distances) if calc_outlier(distances) > 18 else 18
-    # print(distances, '\n', min_distance)
-
+    # min_distance = 18
+    # # print(distances, '\n', min_distance)
+    #
     locations_new = []
     idx = 0
     while idx < len(locations):  # Run combination algorithm from top to bottom
@@ -215,8 +261,9 @@ def get_lines(new_image):
         locations_final[-1][1] + int(avg_sh_final * 2)
     ]
     mid2.append(bottom_line)
+    return mid2, avg_sh_final, h_hist, thr_num
 
-    return mid2, avg_sh_final, h_hist, thr_num,
+    # return locations, h_hist
 
 
 def extract_char_section_from_image(image, upper_line, lower_line):
@@ -255,32 +302,30 @@ def load_path(file_name):
 
 
 def line_segmentation(img_path, new_folder_path):
-    image = get_image(img_path)
-    # image = rotate_image(image)
-    first = get_binary(image)
-    binary_image = copy.deepcopy(first)
+    image = get_binary(get_image(img_path, hough_transform=False))
+    dilated_image = copy.deepcopy(image)
     kernel = np.ones((2, 2), 'uint8')
-    binary_image = cv2.dilate(binary_image, kernel, iterations=1)
-    plot_simple_images([first, binary_image])
-
+    dilated_image = cv2.dilate(dilated_image, kernel, iterations=1)
+    plot_simple_images([image, dilated_image], title="Original vs Dilated image")
     if not os.path.exists(new_folder_path):
         print("Running line segmentation on new image...")
         os.makedirs(new_folder_path)
         # run image-processing
-        mid_lines, avg_lh, hist, thr_num = get_lines(image)
+        # mid_lines, hist = get_lines(dilated_image)
+        mid_lines, avg_lh, hist, thr_num = get_lines(dilated_image)
         plot_hist(hist,
                   thr_num,
                   save=True,
                   folder_path=new_folder_path,
                   overwrite_path=False)
-        plot_hist_lines_on_image(binary_image,
+        plot_hist_lines_on_image(dilated_image,
                                  mid_lines,
                                  save=True,
                                  folder_path=new_folder_path,
                                  overwrite_path=False)
         # Find paths with A*
-        paths = find_paths(mid_lines, binary_image, avg_lh)
-        plot_paths_next_to_image(binary_image,
+        paths = find_paths(mid_lines, dilated_image, avg_lh)
+        plot_paths_next_to_image(dilated_image,
                                  paths,
                                  save=True,
                                  folder_path=new_folder_path,
@@ -303,68 +348,69 @@ def line_segmentation(img_path, new_folder_path):
     line_count = len(paths)
     for line_index in range(line_count -
                             1):  # |-------- extract sections from loaded paths
-        section_image = extract_char_section_from_image(binary_image, paths[line_index],
-                                                      paths[line_index + 1])
+        section_image = extract_char_section_from_image(dilated_image, paths[line_index],
+                                                        paths[line_index + 1])
         section_images.append(section_image)
     return section_images
 
 
 def rotate_image(image):
-    # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
-    tested_angles = np.linspace(-np.pi * 45 / 100, -np.pi * 55 / 100, 100)
-    hspace, theta, dist, = hough_line(image, tested_angles)
+    """
+    A function that takes a binary image and rotates it until the lines found by Hough-Transform become
+    perpendicular or close to perpendicular to the vertical axis.
 
+    Returns a rotated binary image.
+    """
+
+    # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
+    tested_angles = np.linspace(-np.pi * 40 / 100, -np.pi * 50 / 100, 100)
+    hspace, theta, dist, = hough_line(image, tested_angles)
     h, q, d = hough_line_peaks(hspace, theta, dist)
 
-    #################################################################
-    # Example code from skimage documentation to plot the detected lines
     angle_list = []  # Create an empty list to capture all angles
     dist_list = []
-    # Generating figure 1
-    fig, axes = plt.subplots(1, 4, figsize=(15, 6))
-    ax = axes.ravel()
-    ax[0].imshow(image, cmap='gray')
-    ax[0].set_title('Input image')
-    ax[0].set_axis_off()
-    ax[1].imshow(np.log(1 + hspace),
-                 extent=[np.rad2deg(theta[-1]), np.rad2deg(theta[0]), dist[-1], dist[0]],
-                 cmap='gray', aspect=1/1.5)
-    ax[1].set_title('Hough transform')
-    ax[1].set_xlabel('Angles (degrees)')
-    ax[1].set_ylabel('Distance (pixels)')
-    ax[1].axis('image')
-    ax[2].imshow(image, cmap='gray')
     origin = np.array((0, image.shape[1]))
-
-    for _, angle, dist in zip(*hough_line_peaks(hspace, theta, dist, min_distance=50, threshold=0.76 * np.max(hspace))):
-        angle_list.append(angle)  # Not for plotting but later calculation of angles
+    for _, angle, dist in zip(*hough_line_peaks(
+            hspace, theta, dist, min_distance=50, threshold=0.76 *
+                                                            np.max(hspace))):
+        # Not for plotting but later calculation of angles
+        angle_list.append(angle)
         dist_list.append(dist)
         y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
-        ax[2].plot(origin, (y0, y1), '-r')
-
+        # ax[2].plot(origin, (y0, y1), '-r')
     ave_angle = np.mean(angle_list)
-    ave = ave_angle * 180 / np.pi
     ave_dist = np.mean(dist_list)
     x0, x1 = (ave_dist - origin * np.cos(ave_angle)) / np.sin(ave_angle)
 
-    ax[2].plot(origin, (x0, x1), '-b')
-    ax[2].set_xlim(origin)
-    ax[2].set_ylim((image.shape[0], 0))
-    ax[2].set_axis_off()
-    ax[2].set_title('Detected lines')
-
-    ###############################################################
     # Convert angles from radians to degrees (1 rad = 180/pi degrees)
     angles = [a * 180 / np.pi for a in angle_list]
     change = 90 - -1 * np.mean(angles)
-    newImage = imutils.rotate_bound(image, -change)
-    ax[3].imshow(newImage, cmap='gray')
-    plt.tight_layout()
-    plt.show()
+    new_image = cv2.bitwise_not(imutils.rotate_bound(image, -change))
 
-    # plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage)
-
+    # plot_hough_transform(hspace, theta, dist, x0, x1, origin,image,new_image)
     # Compute difference between the two lines
     angle_difference = np.max(angles) - np.min(angles)
 
-    return newImage
+    return new_image
+
+image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
+                "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
+for image_name in image_names:
+    # image_name = "25-Fg001.pbm"
+    dev_path = f"../data/cropped_labeled_images/{image_name}"  # development path
+    new_folder_path = f"../data/cropped_labeled_images/paths/{image_name[0:-4]}"
+    try:
+        section_images = line_segmentation(dev_path, new_folder_path)
+    except:
+        print(f"Segmentation failed for image {image_name}")
+
+for i in range(5, 21):
+    image_name = i
+    dev_path = f"../data/image-data/binaryRenamed/{image_name}.jpg"  # development path
+    new_folder_path = f"../data/image-data/binaryRenamed/paths/{str(image_name)}"
+    try:
+        section_images = line_segmentation(dev_path, new_folder_path)
+    except:
+        print(f"Segmentation failed for image {image_name}")
+
+
