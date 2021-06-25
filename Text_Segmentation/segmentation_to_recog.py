@@ -54,7 +54,7 @@ class TheRecognizer(nn.Module):
 # input: image, new_height, new_width
 # output: the same image but resized, padded with
 # no distortions
-def resize_pad(img, height_all, width_all):
+def resize_pad(img, height_all, width_all, padding_number=0):
     height, width = img.shape
     if height > width:
         resize_factor = height_all / height
@@ -65,7 +65,7 @@ def resize_pad(img, height_all, width_all):
         right_pad = left_pad
         if left_pad + right_pad + new_width != 40:
             right_pad += 1
-        resized_pad_img = cv2.copyMakeBorder(resized_img, 0, 0, left_pad, right_pad, cv2.BORDER_CONSTANT, value=0)
+        resized_pad_img = cv2.copyMakeBorder(resized_img, 0, 0, left_pad, right_pad, cv2.BORDER_CONSTANT, value=padding_number)
     else:
         resize_factor = height_all / height
         new_height = int(img.shape[0] * resize_factor)
@@ -75,7 +75,7 @@ def resize_pad(img, height_all, width_all):
         bottom_pad = top_pad
         if top_pad + bottom_pad + new_height != 40:
             bottom_pad += 1
-        resized_pad_img = cv2.copyMakeBorder(resized_img, top_pad, bottom_pad, 0, 0, cv2.BORDER_CONSTANT, value=0)
+        resized_pad_img = cv2.copyMakeBorder(resized_img, top_pad, bottom_pad, 0, 0, cv2.BORDER_CONSTANT, value=padding_number)
 
     return resized_pad_img
 
