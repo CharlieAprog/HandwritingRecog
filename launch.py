@@ -12,11 +12,18 @@ from Text_Segmentation.wordSegmentation import word_segmentation, trim_360
 from Text_Segmentation.characterSegmentation import character_segmentation, remove_character_artifacts, slide_over_word, select_slides, clean_image
 from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRecognizer
 
-image_name = "herodian3"
-# image_name = 15
-dev_path = f"data/cropped_labeled_images/{image_name}.jpg"  # development path
-new_folder_path = f"data/cropped_labeled_images/paths/{str(image_name)}"
+# image_num = 15
+image_name = "herodian3.jpg"
+#image_name = 15
 
+dev_path = f"/home/jan/PycharmProjects/HandwritingRecog/data/cropped_labeled_images/{image_name}"  # development path
+# dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
+# new_folder_path = f"data/cropped_labeled_images/paths/{image_name[0:-4]}"
+new_folder_path = f"/home/jan/PycharmProjects/HandwritingRecog/data/cropped_labeled_images/paths/{image_name[0:-4]}"
+
+print(dev_path)
+# periods_path = "../data/full_images_periods/Hasmonean/hasmonean-330-1.jpg"
+# new_folder_path = f"../data/full_images_periods/Hasmonean/paths/{os.path.basename(periods_path).split('.')[0]}"
 
 section_images = line_segmentation(dev_path, new_folder_path)
 # plot_simple_images(section_images)
@@ -78,9 +85,9 @@ print("*"*40)
 print("TOTAL CHARACTERS SKIPPED:", characters_skipped)
 print("*"*40)
 print('Getting style classification for all chararcters:')
-style_vec,chi_squared_vec = get_style_char_vec(all_segmented_characters,all_segmented_labels,global_vec= True)
+style_vec,chi_squared_vec = get_style_char_vec(all_segmented_characters,all_segmented_labels, global_vec=True, show_hinge_points=2)
 
-n_neighbors= 10
+n_neighbors = len(style_vec)
 dominant_style = get_dominant_style(style_vec,chi_squared_vec,n_neighbors)
 print(dominant_style)
     # print(f"window: [{shift*idx}-{window_size + shift*idx}]")
