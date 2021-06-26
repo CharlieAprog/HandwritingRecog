@@ -13,12 +13,13 @@ from Text_Segmentation.characterSegmentation import character_segmentation, remo
 from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRecognizer
 
 # image_num = 15
-# image_name = "archaic3.jpg"
-image_name = 15
-dev_path = f"data/image-data/binaryRenamed/{image_name}.jpg"  # development path
+image_name = "hasmonean3.jpg"
+#image_name = 15
+
+dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
 # dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
 # new_folder_path = f"data/cropped_labeled_images/paths/{image_name[0:-4]}"
-new_folder_path = f"data/image-data/binaryRenamed/paths/{str(image_name)}"
+new_folder_path = f"data/cropped_labeled_images/paths/{image_name[0:-4]}"
 
 
 # periods_path = "../data/full_images_periods/Hasmonean/hasmonean-330-1.jpg"
@@ -84,7 +85,7 @@ print("*"*40)
 print("TOTAL CHARACTERS SKIPPED:", characters_skipped)
 print("*"*40)
 print('Getting style classification for all chararcters:')
-style_vec,chi_squared_vec = get_style_char_vec(all_segmented_characters,all_segmented_labels)
+style_vec,chi_squared_vec = get_style_char_vec(all_segmented_characters,all_segmented_labels, show_hinge_points=2)
 
 n_neighbors = len(style_vec)
 dominant_style = get_dominant_style(style_vec,chi_squared_vec,n_neighbors)

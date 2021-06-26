@@ -1,3 +1,6 @@
+import cv2
+import matplotlib.pyplot as plt
+
 from Style_Classification.feature_detection import *
 
 
@@ -22,26 +25,46 @@ def get_angle(x_origin, y_origin, x_up, y_up):
 
     return output
 
-def get_histogram(list_of_cont_cords, dist_between_points, img):
+def get_histogram(list_of_contours, dist_between_points, img, show_points=False):
     # get histogram of co-occurences
     histogram = []
-    i = 0
-    while i < (len(list_of_cont_cords) - (2 * dist_between_points)):
-        # low hinge end point
-        x_low = list_of_cont_cords[i][1]
-        y_low = list_of_cont_cords[i][0]
-        # mid point
-        x_origin = list_of_cont_cords[i + dist_between_points][1]
-        y_origin = list_of_cont_cords[i + dist_between_points][0]
-        # 'upper' hinge end point
-        x_high = list_of_cont_cords[i + (2 * dist_between_points)][1]
-        y_high = list_of_cont_cords[i + (2 * dist_between_points)][0]
-        i += dist_between_points
+    hinge_points= []
+    # go thru every connected contour and extract the angles
+    for list_of_cont_cords in list_of_contours:
+        i = 0
+        while i < (len(list_of_cont_cords) - (2 * dist_between_points)):
+            # low hinge end point
+            x_low = list_of_cont_cords[i][1]
+            y_low = list_of_cont_cords[i][0]
+            # mid point
+            x_origin = list_of_cont_cords[i + dist_between_points][1]
+            y_origin = list_of_cont_cords[i + dist_between_points][0]
+            # 'upper' hinge end point
+            x_high = list_of_cont_cords[i + (2 * dist_between_points)][1]
+            y_high = list_of_cont_cords[i + (2 * dist_between_points)][0]
 
-        phi1 = get_angle(x_origin, (40 - y_origin), x_low, (40 - y_low))
-        phi2 = get_angle(x_origin, (40 - y_origin), x_high, (40 - y_high))
 
-        histogram.append((phi1, phi2))
+            distance_low_leg = abs(y_low - y_origin) + abs(x_low - x_origin)
+            distance_high_leg = abs(y_high - y_origin) + abs(x_high - x_origin)
+            if ((dist_between_points-1 <= distance_low_leg <= dist_between_points+1)
+                and (dist_between_points-1 <= distance_high_leg <= dist_between_points+1)):
+                phi1 = get_angle(x_origin, (40 - y_origin), x_low, (40 - y_low))
+                phi2 = get_angle(x_origin, (40 - y_origin), x_high, (40 - y_high))
+
+                histogram.append((phi1, phi2))
+                i += dist_between_points
+                if show_points:
+                    hinge_points.append([(y_low, x_low), (y_origin, x_origin), (y_high, x_high)])
+            else:
+                i += 1
+    for points in hinge_points:
+        for j in range(len(points)):
+            img[points[j]] = 150
+        plt.imshow(img, cmap='gray')
+        plt.show()
+        for j in range(len(points)):
+            img[points[j]] = 255
+
     return histogram
 
 
@@ -111,23 +134,22 @@ def get_char_vector(img):
     # img,mask = noise_removal(img)
     # apply canny to detect the contours of the char
     img[img==1]=255
-    # plt.imshow(img)
-    # plt.show()
+    img = np.uint8(img)
+    img = cv2.GaussianBlur(img, (5, 5), 0)
+
     corners_of_img = cv2.Canny(img, 0, 100)
     cont_img = np.asarray(corners_of_img)
+
     # get the coordinates of the contour pixels
     contours = np.where(cont_img == 255)
     list_of_cont_cords = list(zip(contours[0], contours[1]))
-    sorted_cords = sort_cords(list_of_cont_cords)
 
+    sorted_cords = sort_cords(list_of_cont_cords)
     # plot the sorted cords in order just to be sure everything went fine
     # sorted_coords_animation(sorted_cords)
 
     #get histogram of phi's
-    hist = get_histogram(sorted_cords, 5, cont_img)
-
-    #if phi2>=phi1, remove from hist
-    # hist = remove_redundant_angles(hist)
+    hist = get_histogram(sorted_cords, 5, cont_img, show_points=True)
 
     # put the angles vals in two lists (needed to get co-occurence)
     list_phi1 = []
@@ -147,10 +169,12 @@ def get_char_vector(img):
     hinge_features = np.zeros([24, 24], dtype=int)
     num_features = 0
     for i in range(len(inds_phi1)):
+        # ignore redundant angles
         if inds_phi1[i] <= inds_phi2[i]:
             num_features += 1
             hinge_features[inds_phi1[i] - 1][inds_phi2[i] - 1] += 1
     feature_vector = []
+    # only keep upper diagonal of co-occurence matrix
     x = 0
     for j in range(24):
         feature_vector.append(hinge_features[j][x:])

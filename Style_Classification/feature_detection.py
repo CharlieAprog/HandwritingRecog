@@ -16,7 +16,7 @@ from Style_Classification.hinge_feature_calc import *
 PI = 3.14159265359
 
 
-def get_style_char_vec(characters, labels,global_vec = False):
+def get_style_char_vec(characters, labels,global_vec = False, show_hinge_points=0):
     # main pipeline function to get char
     style_char_vec = []
     chi_squared_vec = []
@@ -102,9 +102,7 @@ def get_style_char_vec(characters, labels,global_vec = False):
                     herodian_pdfs[idx2name[label]] = get_hinge_pdf(idx2name[label], herodian_imgs)
 
                 # calculate vector for char and chisquared distance
-                cnt = 0
-                feature_vector = get_char_vector(image, cnt=cnt)
-                cnt = 1
+                feature_vector = get_char_vector(image, cnt=show_hinge_points)
                 chiarchaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[label]])
                 chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[label]])
                 chiherodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[label]])

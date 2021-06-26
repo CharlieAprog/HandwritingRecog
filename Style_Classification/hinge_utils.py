@@ -27,8 +27,8 @@ def noise_removal(img,morphology=False):
 
 # finds closest cord based on Manhatten distance with an added prio to the x-direction
 def find_closest_cord(current_cord, contour_cords):
-    min_dist = 500
-    min_dist_x = 500
+    min_dist = 5000
+    min_dist_x = 5000
     min_dist_list = []
     # get the cords that are at min_dist from the current cord
     for i in range(len(contour_cords)):
@@ -40,12 +40,21 @@ def find_closest_cord(current_cord, contour_cords):
     for j in range(len(min_dist_list)):
         if min_dist_list[j][1] == min_dist:
             # add direction prio
+            dist_y = abs(current_cord[1]-contour_cords[j][1])
             dist_x = abs(current_cord[0]-contour_cords[j][0])
+            # set prio in special cases
+            if dist_x == 1 and dist_y == 1:
+                dist_x = -0.1
+            if dist_x == 1 and dist_y == 0:
+                dist_x = -0.2
+            if dist_x == 0 and dist_y == 1:
+                dist_x = -0.3
+
             if dist_x < min_dist_x:
                 min_dist_x = dist_x
                 closest_cord = contour_cords[min_dist_list[j][0]]
 
-    return closest_cord
+    return closest_cord, min_dist
 
 # LOGIC
 # start at one cord then always find the closest in x,y while prioritizing one direction
@@ -54,14 +63,31 @@ def find_closest_cord(current_cord, contour_cords):
 # so we cannot go back // stop when list of contour cords is empty
 def sort_cords(contour_cords):
     sorted_list = []
+    connected_contour = []
     current_cord = contour_cords[0]
-    sorted_list.append(current_cord)
+    connected_contour.append(current_cord)
     contour_cords.remove(current_cord)
-    while contour_cords != []:
-        closest_cord = find_closest_cord(current_cord, contour_cords)
-        sorted_list.append(closest_cord)
-        contour_cords.remove(closest_cord)
-        current_cord = closest_cord
+    len_contour_list = len(contour_cords)
+    while len(contour_cords) != 0:
+        closest_cord, min_dist = find_closest_cord(current_cord, contour_cords)
+        # if the next closest cord is more then 2 distance we encounter a 'new' connected component
+        # to make the angles work these are only calculated on these connected components
+        if min_dist < 3:
+            connected_contour.append(closest_cord)
+            contour_cords.remove(closest_cord)
+            current_cord = closest_cord
+        else:
+            sorted_list.append(connected_contour)
+            connected_contour = []
+            connected_contour.append(closest_cord)
+            contour_cords.remove(closest_cord)
+            current_cord = closest_cord
+    # check if we used all the cords and otherwise append the final connected_contours
+    total_len = 0
+    for contour in sorted_list:
+        total_len += len(contour)
+    if total_len != len_contour_list:
+        sorted_list.append(connected_contour)
     return sorted_list
 
 def get_chisquared(feature_vector,style_pdf):
@@ -83,13 +109,11 @@ def remove_redundant_angles(hist):
 
 def sorted_coords_animation(sorted_cords, hinge_coords=None):
     dummy_img = np.zeros([40, 40])
-    for i in range(len(sorted_cords)):
-        print(sorted_cords[i])
-        dummy_img[sorted_cords[i]] = 1
-        plt.imshow(dummy_img)
-        plt.pause(0.0001)
+    for cords in sorted_cords:
+        print(cords)
+        for i in range(len(cords)):
+            dummy_img[cords[i]] = 1
+            plt.imshow(dummy_img)
+            plt.pause(0.0001)
 
-    if hinge_coords is not None:
-        for j in range(len(hinge_coords)):
-            print(hinge_coords[j])
-            dummy_img[hinge_coords[j]] = 0.5
+
