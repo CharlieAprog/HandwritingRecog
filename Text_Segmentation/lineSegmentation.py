@@ -468,7 +468,7 @@ def group_the_road_blocks(road_blocks):
 def find_paths(hpp_clusters, binary_image, avg_lh):
     fake_rb_indices = []
     agent_height = []
-    upward_push = int(avg_lh * 0.85)
+    stretch = int(avg_lh * 0.85)
     for idx, cluster_of_interest in enumerate(hpp_clusters):
         print(idx)
         if idx == 2:
@@ -480,7 +480,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
 
         # check for fake roadblocks
         if len(road_blocks) != 0:
-            nmap_rb = binary_image[cluster_of_interest[0] - upward_push:cluster_of_interest[-1]]
+            nmap_rb = binary_image[cluster_of_interest[0] - stretch//2:cluster_of_interest[-1]+stretch//2]
             road_blocks_new = get_road_block_regions(nmap_rb)
             if road_blocks_new != road_blocks and len(road_blocks_new) < len(road_blocks):
                 print('Fake roadblock has been hit, better path found')
@@ -554,9 +554,9 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
     for i, cluster_of_interest in tqdm(enumerate(hpp_clusters)):
         if i in fake_rb_indices:
             nmap = binary_image[cluster_of_interest[0] -
-                                upward_push:cluster_of_interest[-1]]
-            offset_from_top = cluster_of_interest[0] - upward_push
-            height = agent_height[i] + upward_push
+                                stretch//2:cluster_of_interest[-1]+stretch//2]
+            offset_from_top = cluster_of_interest[0] - stretch//2
+            height = agent_height[i] + stretch//2
         else:
             nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[-1]]
             offset_from_top = cluster_of_interest[0]
@@ -567,6 +567,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
         # assert path.shape[0] != 0, "Path has shape (0,), algorithm failed to reach destination."
         if path.shape[0] == 0:
             print(f'Path could not be generated for line {i}')
+            # TODO: Add straight line if this still occurs
             continue
         path[:, 0] += offset_from_top
         path = [list(step) for step in path]
@@ -581,16 +582,16 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
 # image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
 #                 "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
 # for image_name in image_names:
-#     # image_name = "25-Fg001.pbm"
-#     dev_path = f"../data/cropped_labeled_images/{image_name}"  # development path
-#     new_folder_path = f"../data/cropped_labeled_images/paths/{image_name[0:-4]}"
-#     section_images = line_segmentation(dev_path, new_folder_path)
+image_name = "herodian1.jpg"
+dev_path = f"../data/cropped_labeled_images/{image_name}"  # development path
+new_folder_path = f"../data/cropped_labeled_images/paths/{image_name[0:-4]}"
+section_images = line_segmentation(dev_path, new_folder_path)
 
-for i in [12, 16]:
-    image_name = i
-    dev_path = f"../data/image-data/binaryRenamed/{image_name}.jpg"  # development path
-    new_folder_path = f"../data/image-data/binaryRenamed/paths/{str(image_name)}"
-    section_images = line_segmentation(dev_path, new_folder_path)
+# for i in [16]:
+#     image_name = i
+#     dev_path = f"../data/image-data/binaryRenamed/{image_name}.jpg"  # development path
+#     new_folder_path = f"../data/image-data/binaryRenamed/paths/{str(image_name)}"
+#     section_images = line_segmentation(dev_path, new_folder_path)
 
 # def rotate_image(image):
 #     # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
