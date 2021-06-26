@@ -16,7 +16,7 @@ from Style_Classification.hinge_feature_calc import *
 PI = 3.14159265359
 
 
-def get_style_char_vec(characters, labels,global_vec = False):
+def get_style_char_vec(characters, labels,global_vec = False, show_hinge_points=False):
     # main pipeline function to get char
     style_char_vec = []
     chi_squared_vec = []
@@ -80,14 +80,14 @@ def get_style_char_vec(characters, labels,global_vec = False):
 
                     # get feature vector of given char and get chisquared for each pdf
                 feature_vector = get_char_vector(image)
-                chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[27]])
-                chiherodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[27]])
-                chiarchaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[27]])
-                minchi = min(chihasmonean, chiherodian, chiarchaic)
+                chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[27]])
+                chi_herodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[27]])
+                chi_archaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[27]])
+                minchi = min(chi_hasmonean, chi_herodian, chi_archaic)
 
-                if minchi == chihasmonean: predicted = 'Hasmonean'
-                if minchi == chiherodian: predicted = 'Herodian'
-                if minchi == chiarchaic: predicted = 'Archaic'
+                if minchi == chi_hasmonean: predicted = 'Hasmonean'
+                if minchi == chi_herodian: predicted = 'Herodian'
+                if minchi == chi_archaic: predicted = 'Archaic'
                 style_char_vec.append(predicted)
                 chi_squared_vec.append(minchi)
 
@@ -101,18 +101,18 @@ def get_style_char_vec(characters, labels,global_vec = False):
                     herodian_pdfs[idx2name[label]] = get_hinge_pdf(idx2name[label], herodian_imgs)
 
                 # calculate vector for char and chisquared distance
-                # cnt = 0
+
                 feature_vector = get_char_vector(image)
-                # cnt = 1
-                chiarchaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[label]])
-                chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[label]])
-                chiherodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[label]])
+
+                chi_archaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[label]])
+                chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[label]])
+                chi_herodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[label]])
 
                 # smallest chi squared is the style of char
-                minchi = min(chihasmonean, chiherodian, chiarchaic)
-                if minchi == chiarchaic: predicted = 'Archaic'
-                if minchi == chihasmonean: predicted = 'Hasmonean'
-                if minchi == chiherodian: predicted = 'Herodian'
+                minchi = min(chi_hasmonean, chi_herodian, chi_archaic)
+                if minchi == chi_archaic: predicted = 'Archaic'
+                if minchi == chi_hasmonean: predicted = 'Hasmonean'
+                if minchi == chi_herodian: predicted = 'Herodian'
                 style_char_vec.append(predicted)
                 chi_squared_vec.append(minchi)
             # print(archaic_pdfs['Global'])
@@ -120,32 +120,32 @@ def get_style_char_vec(characters, labels,global_vec = False):
     else:
         print('getting pdfs')
 
-        # archaic_pdfs = get_hinge_pdf(idx2name[27],archaic_imgs)
-        # hasmonean_pdfs = get_hinge_pdf(idx2name[27],hasmonean_imgs)
-        # herodian_pdfs= get_hinge_pdf(idx2name[27],herodian_imgs)
-        # # np.save("archaic_pdfs", archaic_pdfs)
-        # # np.save("hasmonean_pdfs", hasmonean_pdfs)
-        # # np.save("herodian_pdfs", herodian_pdfs)
-
-        archaic_pdfs = np.load("data/Style_classification_pdfs/archaic_pdfs.npy")
-        hasmonean_pdfs = np.load("data/Style_classification_pdfs/hasmonean_pdfs.npy")
-        herodian_pdfs = np.load("data/style_classification_pdfs/herodian_pdfs.npy")
+        archaic_pdfs = get_hinge_pdf(idx2name[27],archaic_imgs)
+        hasmonean_pdfs = get_hinge_pdf(idx2name[27],hasmonean_imgs)
+        herodian_pdfs= get_hinge_pdf(idx2name[27],herodian_imgs)
+        np.save("archaic_pdfs", archaic_pdfs)
+        np.save("hasmonean_pdfs", hasmonean_pdfs)
+        np.save("herodian_pdfs", herodian_pdfs)
+        #
+        # archaic_pdfs = np.load("/home/jan/PycharmProjects/HandwritingRecog/data/Style_classification_pdfs/archaic_pdfs.npy")
+        # hasmonean_pdfs = np.load("/home/jan/PycharmProjects/HandwritingRecog/data/Style_classification_pdfs/hasmonean_pdfs.npy")
+        # herodian_pdfs = np.load("/home/jan/PycharmProjects/HandwritingRecog/data/style_classification_pdfs/herodian_pdfs.npy")
 
         for image, label in zip(characters, labels):
             feature_vector = get_char_vector(image)
 
-            # chiarchaic,p = stats.chi2_contingency(feature_vector+archaic_pdfs)
-            # chihasmonean,_ = stats.chi2(feature_vector, hasmonean_pdfs)
-            # chiherodian,_ = stats.chi2(feature_vector, herodian_pdfs)
+            # chi_archaic,p = stats.chi2_contingency(feature_vector+archaic_pdfs)
+            # chi_hasmonean,_ = stats.chi2(feature_vector, hasmonean_pdfs)
+            # chi_herodian,_ = stats.chi2(feature_vector, herodian_pdfs)
             # print(p)
-            chiarchaic = get_chisquared(feature_vector, archaic_pdfs)
-            chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs)
-            chiherodian = get_chisquared(feature_vector, herodian_pdfs)
+            chi_archaic = get_chisquared(feature_vector, archaic_pdfs)
+            chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs)
+            chi_herodian = get_chisquared(feature_vector, herodian_pdfs)
 
-            minchi = min(chihasmonean, chiherodian, chiarchaic)
-            if minchi == chiarchaic: predicted = 'Archaic'
-            if minchi == chihasmonean: predicted = 'Hasmonean'
-            if minchi == chiherodian: predicted = 'Herodian'
+            minchi = min(chi_hasmonean, chi_herodian, chi_archaic)
+            if minchi == chi_archaic: predicted = 'Archaic'
+            if minchi == chi_hasmonean: predicted = 'Hasmonean'
+            if minchi == chi_herodian: predicted = 'Herodian'
 
             style_char_vec.append(predicted)
             chi_squared_vec.append(minchi)

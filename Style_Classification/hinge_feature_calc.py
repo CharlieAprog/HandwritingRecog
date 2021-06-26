@@ -57,13 +57,14 @@ def get_histogram(list_of_contours, dist_between_points, img, show_points=False)
                     hinge_points.append([(y_low, x_low), (y_origin, x_origin), (y_high, x_high)])
             else:
                 i += 1
-    for points in hinge_points:
-        for j in range(len(points)):
-            img[points[j]] = 150
-        plt.imshow(img, cmap='gray')
-        plt.show()
-        for j in range(len(points)):
-            img[points[j]] = 255
+    if show_points:
+        for points in hinge_points:
+            for j in range(len(points)):
+                img[points[j]] = 150
+            plt.imshow(img, cmap='gray')
+            plt.show()
+            for j in range(len(points)):
+                img[points[j]] = 255
 
     return histogram
 
@@ -87,7 +88,7 @@ def get_hinge_pdf(img_label, imgs):
             # plot the sorted cords in order just to be sure everything went fine
             # sorted_coords_animation(sorted_cords)
 
-            hist = get_histogram(sorted_cords, 5, cont_img)
+            hist = get_histogram(sorted_cords, 4, cont_img)
             # put the angles vals in two lists (needed to get co-occurence)
             list_phi1 = []
             list_phi2 = []
@@ -139,7 +140,6 @@ def get_char_vector(img):
 
     corners_of_img = cv2.Canny(img, 0, 100)
     cont_img = np.asarray(corners_of_img)
-
     # get the coordinates of the contour pixels
     contours = np.where(cont_img == 255)
     list_of_cont_cords = list(zip(contours[0], contours[1]))
@@ -149,7 +149,7 @@ def get_char_vector(img):
     # sorted_coords_animation(sorted_cords)
 
     #get histogram of phi's
-    hist = get_histogram(sorted_cords, 5, cont_img, show_points=True)
+    hist = get_histogram(sorted_cords, 4, cont_img, show_points=False)
 
     # put the angles vals in two lists (needed to get co-occurence)
     list_phi1 = []

@@ -585,10 +585,10 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
 # image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
 #                 "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
 # for image_name in image_names:
-image_name = "herodian1.jpg"
-dev_path = f"../data/cropped_labeled_images/{image_name}"  # development path
-new_folder_path = f"../data/cropped_labeled_images/paths/{image_name[0:-4]}"
-section_images = line_segmentation(dev_path, new_folder_path)
+# image_name = "herodian1.jpg"
+# dev_path = f"../data/cropped_labeled_images/{image_name}"  # development path
+# new_folder_path = f"../data/cropped_labeled_images/paths/{image_name[0:-4]}"
+# section_images = line_segmentation(dev_path, new_folder_path)
 
 # for i in [16]:
 #     image_name = i
