@@ -72,6 +72,7 @@ def get_lines(new_image):
     # A) Obtain active pixels in each row (horizontal projection)
     h_hist = [len(row.nonzero()[0]) for row in new_image]
 
+    # First line detection: find nearly all peaks for averaging purpose
     fp = findpeaks(lookahead=3)
     result = fp.fit(h_hist)
     peaks = result['df'][result['df']['peak'] == True]
@@ -102,6 +103,8 @@ def get_lines(new_image):
         height = len(line_projections)
         locations.append([y_loc_start, y_loc_start + height])  # starting and ending location of the section
 
+    # Post line detection: identify only true peaks and add them to the locations if they weren't included due to
+    # the threshold
     section_heights = [x[1] - x[0] for x in locations]
     avg_sh = np.mean(section_heights)
     buffer = int(avg_sh * 0.5)
