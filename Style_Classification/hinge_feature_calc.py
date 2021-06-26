@@ -1,6 +1,5 @@
 import cv2
 import matplotlib.pyplot as plt
-
 from Style_Classification.feature_detection import *
 
 
@@ -73,12 +72,22 @@ def get_hinge_pdf(img_label, imgs):
     vals = [i * 0 for i in range(300)]
     for images in imgs[img_label]: #for all Global characters  
             #removenoise + gaussian blur for better canny edge detection
-            images = cv2.GaussianBlur(images,(5,5),0)
+            retval,images = cv2.threshold(images.copy(), thresh=20, maxval=255,
+                                   type=cv2.THRESH_BINARY_INV)
+            # print(';sup')
+            # plt.imshow(images)
+            # plt.show()
+            img = cv2.GaussianBlur(images,(5,5),0)
             img,mask = noise_removal(images)
+            # plt.imshow(img)
+            # plt.show()
 
             # apply canny to detect the contours of the char
-            corners_of_img = cv2.Canny(img, 0, 100)
+            img = cv2.copyMakeBorder(img, 2, 2, 2, 2, cv2.BORDER_CONSTANT, value=0)
+            corners_of_img = cv2.Canny(img, 0, 80)
             cont_img = np.asarray(corners_of_img)
+            # plt.imshow(corners_of_img)
+            # plt.show()
 
             # get the coordinates of the contour pixels
             contours = np.where(cont_img == 255)
@@ -137,8 +146,12 @@ def get_char_vector(img):
     img[img==1]=255
     img = np.uint8(img)
     img = cv2.GaussianBlur(img, (5, 5), 0)
-
+    #padding for proper Canny edge detection
+    img = cv2.copyMakeBorder(img, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
     corners_of_img = cv2.Canny(img, 0, 100)
+    
+    img = noise_removal(corners_of_img)
+    
     cont_img = np.asarray(corners_of_img)
     # get the coordinates of the contour pixels
     contours = np.where(cont_img == 255)

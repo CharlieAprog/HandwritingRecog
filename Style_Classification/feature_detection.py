@@ -40,15 +40,15 @@ def get_style_char_vec(characters, labels,global_vec = False, show_hinge_points=
 
     # get image dict
     archaic_imgs = {char:
-                        [resize_pad(img, new_size_x, new_size_y) for img in
+                        [resize_pad(img, new_size_x, new_size_y,padding_number=255) for img in
                          get_style_char_images(style_base_path + 'Archaic/', char)]
                     for char in archaic_characters}
     hasmonean_imgs = {char:
-                          [resize_pad(img, new_size_x, new_size_y) for img in
+                          [resize_pad(img, new_size_x, new_size_y,padding_number=255) for img in
                            get_style_char_images(style_base_path + 'Hasmonean/', char)]
                       for char in hasmonean_characters}
     herodian_imgs = {char:
-                         [resize_pad(img, new_size_x, new_size_y) for img in
+                         [resize_pad(img, new_size_x, new_size_y,padding_number=255) for img in
                           get_style_char_images(style_base_path + 'Herodian/', char)]
                      for char in herodian_characters}
     idx2name = {0: 'Alef', 1: 'Ayin', 2: 'Bet', 3: 'Dalet', 4: 'Gimel', 5: 'He',
@@ -61,10 +61,6 @@ def get_style_char_vec(characters, labels,global_vec = False, show_hinge_points=
     archaic_pdfs = {}
     hasmonean_pdfs = {}
     herodian_pdfs = {}
-
-    print(len(archaic_imgs['Global']))
-    print(len(hasmonean_imgs['Global']))
-    print(len(herodian_imgs['Global']))
 
     if global_vec == False:
 
@@ -92,6 +88,7 @@ def get_style_char_vec(characters, labels,global_vec = False, show_hinge_points=
                 chi_squared_vec.append(minchi)
 
             else:
+                
                 # get hinge pdfs
                 if idx2name[label] not in archaic_pdfs:
                     archaic_pdfs[idx2name[label]] = get_hinge_pdf(idx2name[label], archaic_imgs)
@@ -123,9 +120,9 @@ def get_style_char_vec(characters, labels,global_vec = False, show_hinge_points=
         archaic_pdfs = get_hinge_pdf(idx2name[27],archaic_imgs)
         hasmonean_pdfs = get_hinge_pdf(idx2name[27],hasmonean_imgs)
         herodian_pdfs= get_hinge_pdf(idx2name[27],herodian_imgs)
-        np.save("archaic_pdfs", archaic_pdfs)
-        np.save("hasmonean_pdfs", hasmonean_pdfs)
-        np.save("herodian_pdfs", herodian_pdfs)
+        # np.save("archaic_pdfs", archaic_pdfs)
+        # np.save("hasmonean_pdfs", hasmonean_pdfs)
+        # np.save("herodian_pdfs", herodian_pdfs)
         #
         # archaic_pdfs = np.load("/home/jan/PycharmProjects/HandwritingRecog/data/Style_classification_pdfs/archaic_pdfs.npy")
         # hasmonean_pdfs = np.load("/home/jan/PycharmProjects/HandwritingRecog/data/Style_classification_pdfs/hasmonean_pdfs.npy")
@@ -133,11 +130,6 @@ def get_style_char_vec(characters, labels,global_vec = False, show_hinge_points=
 
         for image, label in zip(characters, labels):
             feature_vector = get_char_vector(image)
-
-            # chi_archaic,p = stats.chi2_contingency(feature_vector+archaic_pdfs)
-            # chi_hasmonean,_ = stats.chi2(feature_vector, hasmonean_pdfs)
-            # chi_herodian,_ = stats.chi2(feature_vector, herodian_pdfs)
-            # print(p)
             chi_archaic = get_chisquared(feature_vector, archaic_pdfs)
             chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs)
             chi_herodian = get_chisquared(feature_vector, herodian_pdfs)
