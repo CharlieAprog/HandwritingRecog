@@ -20,7 +20,7 @@ def get_style_char_vec(characters, labels,global_vec = False):
     # main pipeline function to get char
     style_char_vec = []
     chi_squared_vec = []
-    style_base_path = '/home/jan/PycharmProjects/HandwritingRecog/data/characters_for_style_classification_balance_morph/'
+    style_base_path = 'data/characters_for_style_classification_balance_morph/'
 
     archaic_characters = ['Taw', 'Pe', 'Kaf-final', 'Lamed', 'Nun-final', 'He', 'Qof', 'Kaf', 'Samekh', 'Yod', 'Dalet',
                           'Waw', 'Ayin', 'Mem', 'Gimel', 'Bet', 'Shin', 'Resh', 'Alef', 'Het', 'Global']
@@ -62,7 +62,6 @@ def get_style_char_vec(characters, labels,global_vec = False):
     hasmonean_pdfs = {}
     herodian_pdfs = {}
 
-
     print(len(archaic_imgs['Global']))
     print(len(hasmonean_imgs['Global']))
     print(len(herodian_imgs['Global']))
@@ -102,9 +101,9 @@ def get_style_char_vec(characters, labels,global_vec = False):
                     herodian_pdfs[idx2name[label]] = get_hinge_pdf(idx2name[label], herodian_imgs)
 
                 # calculate vector for char and chisquared distance
-                cnt = 0
-                feature_vector = get_char_vector(image, cnt=cnt)
-                cnt = 1
+                # cnt = 0
+                feature_vector = get_char_vector(image)
+                # cnt = 1
                 chiarchaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[label]])
                 chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[label]])
                 chiherodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[label]])
@@ -119,37 +118,44 @@ def get_style_char_vec(characters, labels,global_vec = False):
             # print(archaic_pdfs['Global'])
 
     else:
-        archaic_pdfs = get_hinge_pdf(idx2name[27],archaic_imgs)
-        hasmonean_pdfs = get_hinge_pdf(idx2name[27],hasmonean_imgs)
-        herodian_pdfs= get_hinge_pdf(idx2name[27],herodian_imgs)
-        print('global_pdfs!!!')
-        print(archaic_pdfs)
-        print(len(archaic_pdfs))
-        print('--------------------------------------------------------')
-        print(hasmonean_pdfs)
-        print(len(hasmonean_pdfs))
-        print('--------------------------------------------------------')
-        print(herodian_pdfs)
-        print(len(herodian_pdfs))
-        
+        print('getting pdfs')
+
+        # archaic_pdfs = get_hinge_pdf(idx2name[27],archaic_imgs)
+        # hasmonean_pdfs = get_hinge_pdf(idx2name[27],hasmonean_imgs)
+        # herodian_pdfs= get_hinge_pdf(idx2name[27],herodian_imgs)
+        # # np.save("archaic_pdfs", archaic_pdfs)
+        # # np.save("hasmonean_pdfs", hasmonean_pdfs)
+        # # np.save("herodian_pdfs", herodian_pdfs)
+
+        archaic_pdfs = np.load("data/Style_classification_pdfs/archaic_pdfs.npy")
+        hasmonean_pdfs = np.load("data/Style_classification_pdfs/hasmonean_pdfs.npy")
+        herodian_pdfs = np.load("data/style_classification_pdfs/herodian_pdfs.npy")
+
         for image, label in zip(characters, labels):
-            feature_vector = get_char_vector(image, cnt=0)
+            feature_vector = get_char_vector(image)
+
+            # chiarchaic,p = stats.chi2_contingency(feature_vector+archaic_pdfs)
+            # chihasmonean,_ = stats.chi2(feature_vector, hasmonean_pdfs)
+            # chiherodian,_ = stats.chi2(feature_vector, herodian_pdfs)
+            # print(p)
             chiarchaic = get_chisquared(feature_vector, archaic_pdfs)
             chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs)
             chiherodian = get_chisquared(feature_vector, herodian_pdfs)
+
             minchi = min(chihasmonean, chiherodian, chiarchaic)
             if minchi == chiarchaic: predicted = 'Archaic'
             if minchi == chihasmonean: predicted = 'Hasmonean'
             if minchi == chiherodian: predicted = 'Herodian'
+
             style_char_vec.append(predicted)
             chi_squared_vec.append(minchi)
 
     return style_char_vec, chi_squared_vec
 
 
-def get_dominant_style(style_vec, chisquared_vec):
+def get_dominant_style(style_vec, chisquared_vec,n_neighbors = 10 ):
     style_vec = [sorting for _, sorting in sorted(zip(chisquared_vec, style_vec))]
-    return Counter(style_vec)
+    return Counter(style_vec[:n_neighbors])
 
 
 def get_accuracy_alldata(dataset, archaic_imgs, hasmonean_imgs, herodian_imgs):
