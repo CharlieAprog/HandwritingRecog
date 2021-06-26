@@ -19,7 +19,7 @@ new_folder_path = f"data/cropped_labeled_images/paths/{str(image_name)}"
 
 
 section_images = line_segmentation(dev_path, new_folder_path)
-plot_simple_images(section_images)
+# plot_simple_images(section_images)
 lines, words_in_lines = word_segmentation(section_images)
 characters, single_character_widths, mean_character_width = character_segmentation(words_in_lines)
 
