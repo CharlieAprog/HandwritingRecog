@@ -1,3 +1,4 @@
+from numpy.testing._private.utils import print_assert_equal
 from Text_Segmentation.plotting import *
 from Text_Segmentation.lineSegmentation import calc_outlier
 from Text_Segmentation.wordSegmentation import trim_360
@@ -197,15 +198,12 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
                                     skip_left_pruning = True
                                 if x_max == new_cluster.shape[1]:
                                     skip_right_pruning = True
-                                if taller_cluster != []:
+                                if taller_cluster != [] and np.sum(character) > 500 :
+                                    # plot_simple_images([character, taller_cluster, clean_image(taller_cluster)])
                                     if is_image_border_active(taller_cluster):
-                                        word_list.append(
-                                            trim_360(remove_character_artifacts(character, skip_left_pruning,
-                                                                                skip_right_pruning)))
+                                        word_list.append(clean_image(character, skip_left_pruning=skip_left_pruning, skip_right_pruning=skip_right_pruning))
                                     else:
-                                        word_list.append(
-                                            trim_360(remove_character_artifacts(taller_cluster, skip_left_pruning,
-                                                                                skip_right_pruning)))
+                                        word_list.append(clean_image(taller_cluster, skip_left_pruning=skip_left_pruning, skip_right_pruning=skip_right_pruning))
                                     character_widths.append(word_list[-1].shape[1])
                 if word_list != []:
                     line_list.append(word_list)
@@ -232,14 +230,11 @@ def filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_
                         skip_left_pruning = True
                     if x_max == eroded_img.shape[1]:
                         skip_right_pruning = True
-                    if taller_cluster != []:
+                    if taller_cluster != [] and np.sum(image) > 500 :
                         if is_image_border_active(taller_cluster):
-                            filtered_images.append(trim_360(remove_character_artifacts(image, skip_left_pruning,
-                                                                                       skip_right_pruning)))
+                            filtered_images.append(clean_image(image, skip_left_pruning=skip_left_pruning,skip_right_pruning=skip_right_pruning))
                         else:
-                            filtered_images.append(
-                                trim_360(remove_character_artifacts(taller_cluster, skip_left_pruning,
-                                                                    skip_right_pruning)))
+                            filtered_images.append(clean_image(taller_cluster, skip_left_pruning=skip_left_pruning,skip_right_pruning=skip_right_pruning))
     return filtered_images
 
 
@@ -287,10 +282,10 @@ def destructure_characters(characters_in_line):
     return characters
 
 
-def clean_image(image, thresh_side=500, thresh_mid=30, trim_thresh=10):
+def clean_image(image, thresh_side=500, thresh_mid=30, trim_thresh=10, skip_left_pruning= False, skip_right_pruning = False ):
     # image = get_binary(image)
     image = image.astype(np.uint8)
-    new = remove_character_artifacts(image, min_cluster=thresh_side, internal_min_cluster=thresh_mid)
+    new = remove_character_artifacts(image, skip_left_pruning=skip_left_pruning, skip_right_pruning= skip_right_pruning, min_cluster=thresh_side, internal_min_cluster=thresh_mid)
     if new.size == 0:
         new = image
     new = trim_360(new, section_thresh=trim_thresh)

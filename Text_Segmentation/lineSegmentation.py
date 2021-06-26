@@ -605,11 +605,11 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
 #     new_folder_path = f"data/cropped_labeled_images/paths/{image_name[0:-4]}"
 #     section_images = line_segmentation(dev_path, new_folder_path)
 
-for i in range(1,21):
-    image_name = i
-    dev_path = f"data/image-data/binaryRenamed/{image_name}.jpg"  # development path
-    new_folder_path = f"data/image-data/binaryRenamed/paths/{str(image_name)}"
-    section_images = line_segmentation(dev_path, new_folder_path)
+# for i in range(1,21):
+#     image_name = i
+#     dev_path = f"data/image-data/binaryRenamed/{image_name}.jpg"  # development path
+#     new_folder_path = f"data/image-data/binaryRenamed/paths/{str(image_name)}"
+#     section_images = line_segmentation(dev_path, new_folder_path)
 
 # def rotate_image(image):
 #     # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
