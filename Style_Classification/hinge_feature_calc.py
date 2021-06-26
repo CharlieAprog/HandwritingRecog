@@ -1,5 +1,5 @@
 from Style_Classification.feature_detection import *
-
+from Style_Classification.hinge_utils import noise_removal
 
 
 def get_style_char_images(style_path: str, character: str):
@@ -47,7 +47,7 @@ def get_histogram(list_of_cont_cords, dist_between_points, img):
 
 def get_hinge_pdf(img_label, imgs):
     vals = [i * 0 for i in range(300)]
-    for images in imgs[img_label]: #for all Global characters  
+    for images in imgs[img_label]: 
             #removenoise + gaussian blur for better canny edge detection
             images = cv2.GaussianBlur(images,(5,5),0)
             img,mask = noise_removal(images)
@@ -107,12 +107,11 @@ def get_hinge_pdf(img_label, imgs):
     return massdist
 
 def get_char_vector(img):
+    img = np.uint8(img)
     #returns pdf of hinge features (f2) for one image
     # img,mask = noise_removal(img)
-    # apply canny to detect the contours of the char
     img[img==1]=255
-    # plt.imshow(img)
-    # plt.show()
+    
     corners_of_img = cv2.Canny(img, 0, 100)
     cont_img = np.asarray(corners_of_img)
     # get the coordinates of the contour pixels
