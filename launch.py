@@ -13,13 +13,13 @@ from Text_Segmentation.characterSegmentation import character_segmentation, remo
 from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRecognizer
 
 # image_num = 15
-image_name = "herodian3.jpg"
+image_name = "124-Fg004.pbm"
 #image_name = 15
 
-dev_path = f"/home/jan/PycharmProjects/HandwritingRecog/data/cropped_labeled_images/{image_name}"  # development path
+dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
 # dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
 # new_folder_path = f"data/cropped_labeled_images/paths/{image_name[0:-4]}"
-new_folder_path = f"/home/jan/PycharmProjects/HandwritingRecog/data/cropped_labeled_images/paths/{image_name[0:-4]}"
+new_folder_path = f"data/cropped_labeled_images/paths/{image_name[0:-4]}"
 
 print(dev_path)
 # periods_path = "../data/full_images_periods/Hasmonean/hasmonean-330-1.jpg"
