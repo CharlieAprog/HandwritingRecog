@@ -471,6 +471,8 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
     upward_push = int(avg_lh * 0.85)
     for idx, cluster_of_interest in enumerate(hpp_clusters):
         print(idx)
+        if idx == 2:
+            asd = 0
         nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[-1]]
         road_blocks = get_road_block_regions(nmap)
         start_end_height = int(nmap.shape[0] / 2)
@@ -490,10 +492,11 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
         for road_blocks in road_blocks_cluster_groups:
             rb_end_reached = False  # true end of the roadblock
             i = 0
+            mid = (cluster_of_interest[1]-cluster_of_interest[0])//2
             prev_pixel = binary_image[
                          cluster_of_interest[0]:
                          cluster_of_interest[-1], :][:, road_blocks[0]:binary_image.
-                                                                           shape[1] - 1][0, 0]
+                                                                           shape[1] - 1][mid, 0]
             # making sure prev_pixel is initiated with a 0
             step_back = 1
             while prev_pixel:
@@ -501,35 +504,41 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
                              cluster_of_interest[0]:
                              cluster_of_interest[-1], :][:, road_blocks[0] -
                                                             step_back:binary_image.
-                                                                          shape[1] - 1][0, 0]
+                                                                          shape[1] - 1][mid, 0]
                 step_back += 1
             assert prev_pixel == 0, "prev_pixel=1 at the start of annulling, horizontal cut cannot be performed"
 
             while True:
+                if np.sum(binary_image[cluster_of_interest[0]:cluster_of_interest[-1], :][:,
+                    road_blocks[0]: binary_image.shape[1] - 1][mid, :]) == 0:
+                    print("Cut omitted, path is free.")
+                    break
                 i += 1
+                # If roadblock end found (black pixel)
                 if binary_image[cluster_of_interest[0]:cluster_of_interest[-1], :][:,
-                    road_blocks[0]: binary_image.shape[1] - 1][0, i] == 0:
+                    road_blocks[0]: binary_image.shape[1] - 1][mid, i] == 0:
                     if prev_pixel == 1:
                         rb_end_reached = True
                         binary_image[
                         cluster_of_interest[0]:cluster_of_interest[
                             -1], :][:,
                         road_blocks[0]:binary_image.shape[1] -
-                                       1][0, 0:i] = 0
+                                       1][mid, 0:i] = 0
                     if rb_end_reached:
                         # detect fake roadblock end
-                        fake_end_length = 20
+                        fake_end_length = 40
                         if len(
                                 np.nonzero(
                                     binary_image[cluster_of_interest[0]:
                                     cluster_of_interest[-1], :]
                                     [:, road_blocks[0]:binary_image.shape[1]][
-                                    0, i:i + fake_end_length])[0]) != 0:
+                                    mid, i:i + fake_end_length])[0]) != 0:
                             rb_end_reached = False
                             prev_pixel = 0
                             print("fake end")
                             continue
                         # true end
+                        print(f"Cuts have been made for line {idx}, roadblock {road_blocks}")
                         break
                     prev_pixel = 0
                 else:
@@ -557,7 +566,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
         print("path.shape:", path.shape)
         # assert path.shape[0] != 0, "Path has shape (0,), algorithm failed to reach destination."
         if path.shape[0] == 0:
-            print(f'Path could not be generated for line {i + 1}')
+            print(f'Path could not be generated for line {i}')
             continue
         path[:, 0] += offset_from_top
         path = [list(step) for step in path]
@@ -571,14 +580,13 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
 
 # image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
 #                 "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
-image_names = ["hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
-for image_name in image_names:
-    # image_name = "25-Fg001.pbm"
-    dev_path = f"../data/cropped_labeled_images/{image_name}"  # development path
-    new_folder_path = f"../data/cropped_labeled_images/paths/{image_name[0:-4]}"
-    section_images = line_segmentation(dev_path, new_folder_path)
+# for image_name in image_names:
+#     # image_name = "25-Fg001.pbm"
+#     dev_path = f"../data/cropped_labeled_images/{image_name}"  # development path
+#     new_folder_path = f"../data/cropped_labeled_images/paths/{image_name[0:-4]}"
+#     section_images = line_segmentation(dev_path, new_folder_path)
 
-for i in range(5, 21):
+for i in [12, 16]:
     image_name = i
     dev_path = f"../data/image-data/binaryRenamed/{image_name}.jpg"  # development path
     new_folder_path = f"../data/image-data/binaryRenamed/paths/{str(image_name)}"
