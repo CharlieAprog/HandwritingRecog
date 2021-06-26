@@ -9,7 +9,6 @@ import glob
 import copy
 from findpeaks import findpeaks
 from Text_Segmentation.plotting import *
-from Text_Segmentation.aStar import *
 
 
 def timer(original_func):
@@ -48,67 +47,6 @@ def get_binary(img):
     binary = img <= thresh
     binary = binary * 1
     return binary.astype(np.uint8)
-
-
-# def rotate_image(image):
-#     # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
-#     tested_angles = np.linspace(-np.pi * 45 / 100, -np.pi * 55 / 100, 100)
-#     hspace, theta, dist, = hough_line(image, tested_angles)
-#
-#     h, q, d = hough_line_peaks(hspace, theta, dist)
-#
-#     #################################################################
-#     # Example code from skimage documentation to plot the detected lines
-#     angle_list = []  # Create an empty list to capture all angles
-#     dist_list = []
-#     # Generating figure 1
-#     fig, axes = plt.subplots(1, 4, figsize=(15, 6))
-#     ax = axes.ravel()
-#     ax[0].imshow(image, cmap='gray')
-#     ax[0].set_title('Input image')
-#     ax[0].set_axis_off()
-#     ax[1].imshow(np.log(1 + hspace),
-#                  extent=[np.rad2deg(theta[-1]), np.rad2deg(theta[0]), dist[-1], dist[0]],
-#                  cmap='gray', aspect=1 / 1.5)
-#     ax[1].set_title('Hough transform')
-#     ax[1].set_xlabel('Angles (degrees)')
-#     ax[1].set_ylabel('Distance (pixels)')
-#     ax[1].axis('image')
-#     ax[2].imshow(image, cmap='gray')
-#     origin = np.array((0, image.shape[1]))
-#
-#     for _, angle, dist in zip(*hough_line_peaks(hspace, theta, dist, min_distance=50, threshold=0.76 * np.max(hspace))):
-#         angle_list.append(angle)  # Not for plotting but later calculation of angles
-#         dist_list.append(dist)
-#         y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
-#         ax[2].plot(origin, (y0, y1), '-r')
-#
-#     ave_angle = np.mean(angle_list)
-#     ave = ave_angle * 180 / np.pi
-#     ave_dist = np.mean(dist_list)
-#     x0, x1 = (ave_dist - origin * np.cos(ave_angle)) / np.sin(ave_angle)
-#
-#     ax[2].plot(origin, (x0, x1), '-b')
-#     ax[2].set_xlim(origin)
-#     ax[2].set_ylim((image.shape[0], 0))
-#     ax[2].set_axis_off()
-#     ax[2].set_title('Detected lines')
-#
-#     ###############################################################
-#     # Convert angles from radians to degrees (1 rad = 180/pi degrees)
-#     angles = [a * 180 / np.pi for a in angle_list]
-#     change = 90 - -1 * np.mean(angles)
-#     newImage = imutils.rotate_bound(image, -change)
-#     ax[3].imshow(newImage, cmap='gray')
-#     plt.tight_layout()
-#     plt.show()
-#
-#     # plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage)
-#
-#     # Compute difference between the two lines
-#     angle_difference = np.max(angles) - np.min(angles)
-#
-#     return newImage
 
 
 def calc_outlier(data, method="std"):
@@ -171,39 +109,44 @@ def get_lines(new_image):
     result = fp.fit(h_hist)
     peaks = result['df'][result['df']['peak'] == True]
     loc_peaks = peaks.x.to_list()
+    locations_extended = copy.deepcopy(locations)
     for peak in loc_peaks:
         contained = False
-        for loc in locations:
+        for loc in locations_extended:
             if loc[1] > peak > loc[0]:
                 contained = True
         if not contained:
-            locations.append([peak - buffer, peak + buffer])
-    locations = sorted(locations, key=lambda x: x[0])
+            locations_extended.append([peak - buffer, peak + buffer])
+    locations_extended = sorted(locations_extended, key=lambda x: x[0])
 
     # C) Combining sections that are too close together
     # distances between consecutive sections (SEC_n+1_top - SEC_n_bottom)
     distances = [
-        locations[sec + 1][0] - locations[sec][1]
-        for sec in range(len(locations) - 1)
+        locations_extended[sec + 1][0] - locations_extended[sec][1]
+        for sec in range(len(locations_extended) - 1)
     ]
     min_distance = calc_outlier(distances) if calc_outlier(distances) > 18 else 18
     # min_distance = 18
     # # print(distances, '\n', min_distance)
     #
-    locations_new = []
+    locations_extended_new = []
     idx = 0
-    while idx < len(locations):  # Run combination algorithm from top to bottom
-        if idx < len(distances):  # len(distances) = len(locations)-1
+    while idx < len(locations_extended):  # Run combination algorithm from top to bottom
+        if idx < len(distances):  # len(distances) = len(locations_extended)-1
             distance = distances[idx]
-            locations_new.append(locations[idx])
+            locations_extended_new.append(locations_extended[idx])
         else:  # End of algorithm
-            if locations[idx][1] - locations[idx][0] > min_distance:
-                locations_new.append(locations[idx])
+            if locations_extended[idx][1] - locations_extended[idx][0] > min_distance:
+                locations_extended_new.append(locations_extended[idx])
             break
 
         idx2 = 1
         while distance < min_distance:
-            locations_new[-1][1] = locations[idx + idx2][1]  # merge current location with next
+            # don't manipulate lines that have been added after post-detection
+            if locations_extended[idx] not in locations:
+                idx2 += 1
+                break
+            locations_extended_new[-1][1] = locations_extended[idx + idx2][1]  # merge current location with next
             if idx + idx2 < len(distances):
                 distance = distances[idx + idx2]  # merge current distance with next
             else:
@@ -212,24 +155,24 @@ def get_lines(new_image):
         idx += idx2
 
     # D) Adding buffer, based on average height of the NEW (!) sections, to each section that is too small
-    section_heights_new = [x[1] - x[0] for x in locations_new]
+    section_heights_new = [x[1] - x[0] for x in locations_extended_new]
     avg_sh_new = np.mean(section_heights_new)
-    for idx, loc in enumerate(locations_new):
+    for idx, loc in enumerate(locations_extended_new):
         if section_heights_new[idx] < avg_sh_new:
             for i in range(len(loc)):
                 if idx == 0:
                     # top lines are pushed up
-                    locations_new[idx][i] -= int(avg_sh_new / 5)
+                    locations_extended_new[idx][i] -= int(avg_sh_new / 5)
                 else:
                     # bottom lines are pushed down
-                    locations_new[idx][i] += int(avg_sh_new / 6)
+                    locations_extended_new[idx][i] += int(avg_sh_new / 6)
 
     # E) Remove sections with too small height (may occur due to very short lines with scattered artefacts)
     locations_final = []
     min_height = int(calc_outlier(section_heights_new) / 3) + 2
     for idx in range(len(section_heights_new)):
         if section_heights_new[idx] >= min_height:
-            locations_final.append(locations_new[idx])
+            locations_final.append(locations_extended_new[idx])
     section_heights_final = [x[1] - x[0] for x in locations_final]
     avg_sh_final = np.mean(section_heights_final)
 
@@ -240,6 +183,9 @@ def get_lines(new_image):
         locations_final[0][0] - int(avg_sh_final * 2.5),
         locations_final[0][0] - int(avg_sh_final)
     ]
+    if top_line[0] <= 0 or top_line[1] <= 0:
+        top_line[0] = 0
+        top_line[1] = 1
     mid_lines.append(top_line)
 
     # TODO: This might not even be necessary at all
@@ -260,6 +206,9 @@ def get_lines(new_image):
         locations_final[-1][1] + int(avg_sh_final),
         locations_final[-1][1] + int(avg_sh_final * 2)
     ]
+    if bottom_line[0] >= new_image.shape[0] or bottom_line[1] >= new_image.shape[0]:
+        bottom_line[0] = new_image.shape[0]-1
+        bottom_line[1] = new_image.shape[0]
     mid2.append(bottom_line)
     return mid2, avg_sh_final, h_hist, thr_num
 
@@ -302,7 +251,7 @@ def load_path(file_name):
 
 
 def line_segmentation(img_path, new_folder_path):
-    image = get_binary(get_image(img_path, hough_transform=False))
+    image = get_binary(rotate_image(get_image(img_path, hough_transform=True)))
     dilated_image = copy.deepcopy(image)
     kernel = np.ones((2, 2), 'uint8')
     dilated_image = cv2.dilate(dilated_image, kernel, iterations=1)
@@ -393,24 +342,304 @@ def rotate_image(image):
 
     return new_image
 
+
+# |-------------------------|
+# |          A*             |
+# |-------------------------|
+import numpy as np
+from heapq import *
+from tqdm import tqdm
+
+
+def heuristic(a, b):
+    return (b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2
+
+
+def astar(array, start, goal, i):
+    # 8 directions: up, down, right, left, ....
+    neighbors = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1),
+                 (-1, -1)]
+    close_set = set()
+    came_from = {}  # prev step
+    gscore = {start: 0}
+    fscore = {start: heuristic(start, goal)}
+    oheap = []
+
+    heappush(oheap, (fscore[start], start))
+
+    while oheap:
+        current = heappop(oheap)[1]
+        if current == goal:
+            data = []
+            while current in came_from:
+                data.append(current)
+                current = came_from[current]
+            return data
+
+        close_set.add(current)
+        for i, j in neighbors:
+            neighbor = current[0] + i, current[1] + j
+            tentative_g_score = gscore[current] + heuristic(current, neighbor)
+            if i == 11:
+                print(current)
+            if 0 <= neighbor[0] < array.shape[0]:
+                if 0 <= neighbor[1] < array.shape[1]:
+                    if array[neighbor[0]][neighbor[1]] == 1:
+                        continue
+                else:  # array bound y walls
+                    continue
+            else:  # array bound x walls
+                continue
+
+            if neighbor in close_set and tentative_g_score >= gscore.get(
+                    neighbor, 0):
+                continue
+
+            if tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [
+                i[1] for i in oheap
+            ]:
+                if i == 11:
+                    print(current)
+                came_from[neighbor] = current
+                gscore[neighbor] = tentative_g_score
+                fscore[neighbor] = tentative_g_score + \
+                                   heuristic(neighbor, goal)
+                heappush(oheap, (fscore[neighbor], neighbor))
+    return []
+
+
+def horizontal_projections(sobel_image):
+    return np.sum(sobel_image, axis=1)
+
+
+def path_exists(window_image):
+    # very basic check first then proceed to A* check
+    if 0 in horizontal_projections(window_image):
+        return True
+
+    padded_window = np.zeros((window_image.shape[0], 1))
+    world_map = np.hstack(
+        (padded_window, np.hstack((window_image, padded_window))))
+    path = np.array(
+        astar(world_map, (int(world_map.shape[0] / 2), 0),
+              (int(world_map.shape[0] / 2), world_map.shape[1]), 0))
+    if len(path) > 0:
+        return True
+
+    return False
+
+
+def get_road_block_regions(nmap):
+    road_blocks = []
+    needtobreak = False
+
+    for col in range(nmap.shape[1]):
+        start = col
+        end = col + 40
+        if end > nmap.shape[1] - 1:
+            end = nmap.shape[1] - 1
+            needtobreak = True
+
+        if path_exists(nmap[:, start:end]) == False:
+            road_blocks.append(col)
+
+        if needtobreak == True:
+            break
+
+    return road_blocks
+
+
+def group_the_road_blocks(road_blocks):
+    # group the road blocks
+    road_blocks_cluster_groups = []
+    road_blocks_cluster = []
+    size = len(road_blocks)
+    for index, value in enumerate(road_blocks):
+        road_blocks_cluster.append(value)
+        # split up the clusters
+        if index < size - 1 and (road_blocks[index + 1] - road_blocks[index]) > 1 or \
+                index == size - 1 and len(road_blocks_cluster) > 0:
+            road_blocks_cluster_groups.append(
+                [road_blocks_cluster[0], road_blocks_cluster[-1]])
+            road_blocks_cluster = []
+    return road_blocks_cluster_groups
+
+
+def find_paths(hpp_clusters, binary_image, avg_lh):
+    fake_rb_indices = []
+    agent_height = []
+    upward_push = int(avg_lh * 0.85)
+    for idx, cluster_of_interest in enumerate(hpp_clusters):
+        print(idx)
+        nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[-1]]
+        road_blocks = get_road_block_regions(nmap)
+        start_end_height = int(nmap.shape[0] / 2)
+        agent_height.append(start_end_height)
+
+        # check for fake roadblocks
+        if len(road_blocks) != 0:
+            nmap_rb = binary_image[cluster_of_interest[0] - upward_push:cluster_of_interest[-1]]
+            road_blocks_new = get_road_block_regions(nmap_rb)
+            if road_blocks_new != road_blocks and len(road_blocks_new) < len(road_blocks):
+                print('Fake roadblock has been hit, better path found')
+                fake_rb_indices.append(idx)
+                road_blocks = road_blocks_new
+        road_blocks_cluster_groups = group_the_road_blocks(road_blocks)
+
+        # create the doorways for real roadblocks
+        for road_blocks in road_blocks_cluster_groups:
+            rb_end_reached = False  # true end of the roadblock
+            i = 0
+            prev_pixel = binary_image[
+                         cluster_of_interest[0]:
+                         cluster_of_interest[-1], :][:, road_blocks[0]:binary_image.
+                                                                           shape[1] - 1][0, 0]
+            # making sure prev_pixel is initiated with a 0
+            step_back = 1
+            while prev_pixel:
+                prev_pixel = binary_image[
+                             cluster_of_interest[0]:
+                             cluster_of_interest[-1], :][:, road_blocks[0] -
+                                                            step_back:binary_image.
+                                                                          shape[1] - 1][0, 0]
+                step_back += 1
+            assert prev_pixel == 0, "prev_pixel=1 at the start of annulling, horizontal cut cannot be performed"
+
+            while True:
+                i += 1
+                if binary_image[cluster_of_interest[0]:cluster_of_interest[-1], :][:,
+                    road_blocks[0]: binary_image.shape[1] - 1][0, i] == 0:
+                    if prev_pixel == 1:
+                        rb_end_reached = True
+                        binary_image[
+                        cluster_of_interest[0]:cluster_of_interest[
+                            -1], :][:,
+                        road_blocks[0]:binary_image.shape[1] -
+                                       1][0, 0:i] = 0
+                    if rb_end_reached:
+                        # detect fake roadblock end
+                        fake_end_length = 20
+                        if len(
+                                np.nonzero(
+                                    binary_image[cluster_of_interest[0]:
+                                    cluster_of_interest[-1], :]
+                                    [:, road_blocks[0]:binary_image.shape[1]][
+                                    0, i:i + fake_end_length])[0]) != 0:
+                            rb_end_reached = False
+                            prev_pixel = 0
+                            print("fake end")
+                            continue
+                        # true end
+                        break
+                    prev_pixel = 0
+                else:
+                    prev_pixel = 1
+
+            # Plot enlargened section (if needed) where horizontal cut is performed
+            # if idx == 6:
+            #     plt.plot(figsize=(16, 12))
+            #     plt.imshow(invert(binary_image[cluster_of_interest[0]:cluster_of_interest[-1],:][:, road_blocks[0]: road_blocks[1]]), cmap="gray")
+            #     plt.show()
+
+    paths = []
+    for i, cluster_of_interest in tqdm(enumerate(hpp_clusters)):
+        if i in fake_rb_indices:
+            nmap = binary_image[cluster_of_interest[0] -
+                                upward_push:cluster_of_interest[-1]]
+            offset_from_top = cluster_of_interest[0] - upward_push
+            height = agent_height[i] + upward_push
+        else:
+            nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[-1]]
+            offset_from_top = cluster_of_interest[0]
+            height = agent_height[i]
+        path = np.array(
+            astar(nmap, (height, 0), (height, nmap.shape[1] - 1), i))
+        print("path.shape:", path.shape)
+        # assert path.shape[0] != 0, "Path has shape (0,), algorithm failed to reach destination."
+        if path.shape[0] == 0:
+            print(f'Path could not be generated for line {i + 1}')
+            continue
+        path[:, 0] += offset_from_top
+        path = [list(step) for step in path]
+        paths.append(path)
+    return paths
+
+
+# |-------------------------|
+# |          A*             |
+# |-------------------------|
+
 # image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
 #                 "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
-# for image_name in image_names:
-#     # image_name = "25-Fg001.pbm"
-#     dev_path = f"../data/cropped_labeled_images/{image_name}"  # development path
-#     new_folder_path = f"../data/cropped_labeled_images/paths/{image_name[0:-4]}"
-#     try:
-#         section_images = line_segmentation(dev_path, new_folder_path)
-#     except:
-#         print(f"Segmentation failed for image {image_name}")
+image_names = ["hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
+for image_name in image_names:
+    # image_name = "25-Fg001.pbm"
+    dev_path = f"../data/cropped_labeled_images/{image_name}"  # development path
+    new_folder_path = f"../data/cropped_labeled_images/paths/{image_name[0:-4]}"
+    section_images = line_segmentation(dev_path, new_folder_path)
+
+for i in range(5, 21):
+    image_name = i
+    dev_path = f"../data/image-data/binaryRenamed/{image_name}.jpg"  # development path
+    new_folder_path = f"../data/image-data/binaryRenamed/paths/{str(image_name)}"
+    section_images = line_segmentation(dev_path, new_folder_path)
+
+# def rotate_image(image):
+#     # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
+#     tested_angles = np.linspace(-np.pi * 45 / 100, -np.pi * 55 / 100, 100)
+#     hspace, theta, dist, = hough_line(image, tested_angles)
 #
-# for i in range(5, 21):
-#     image_name = i
-#     dev_path = f"../data/image-data/binaryRenamed/{image_name}.jpg"  # development path
-#     new_folder_path = f"../data/image-data/binaryRenamed/paths/{str(image_name)}"
-#     try:
-#         section_images = line_segmentation(dev_path, new_folder_path)
-#     except:
-#         print(f"Segmentation failed for image {image_name}")
-
-
+#     h, q, d = hough_line_peaks(hspace, theta, dist)
+#
+#     #################################################################
+#     # Example code from skimage documentation to plot the detected lines
+#     angle_list = []  # Create an empty list to capture all angles
+#     dist_list = []
+#     # Generating figure 1
+#     fig, axes = plt.subplots(1, 4, figsize=(15, 6))
+#     ax = axes.ravel()
+#     ax[0].imshow(image, cmap='gray')
+#     ax[0].set_title('Input image')
+#     ax[0].set_axis_off()
+#     ax[1].imshow(np.log(1 + hspace),
+#                  extent=[np.rad2deg(theta[-1]), np.rad2deg(theta[0]), dist[-1], dist[0]],
+#                  cmap='gray', aspect=1 / 1.5)
+#     ax[1].set_title('Hough transform')
+#     ax[1].set_xlabel('Angles (degrees)')
+#     ax[1].set_ylabel('Distance (pixels)')
+#     ax[1].axis('image')
+#     ax[2].imshow(image, cmap='gray')
+#     origin = np.array((0, image.shape[1]))
+#
+#     for _, angle, dist in zip(*hough_line_peaks(hspace, theta, dist, min_distance=50, threshold=0.76 * np.max(hspace))):
+#         angle_list.append(angle)  # Not for plotting but later calculation of angles
+#         dist_list.append(dist)
+#         y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
+#         ax[2].plot(origin, (y0, y1), '-r')
+#
+#     ave_angle = np.mean(angle_list)
+#     ave = ave_angle * 180 / np.pi
+#     ave_dist = np.mean(dist_list)
+#     x0, x1 = (ave_dist - origin * np.cos(ave_angle)) / np.sin(ave_angle)
+#
+#     ax[2].plot(origin, (x0, x1), '-b')
+#     ax[2].set_xlim(origin)
+#     ax[2].set_ylim((image.shape[0], 0))
+#     ax[2].set_axis_off()
+#     ax[2].set_title('Detected lines')
+#
+#     ###############################################################
+#     # Convert angles from radians to degrees (1 rad = 180/pi degrees)
+#     angles = [a * 180 / np.pi for a in angle_list]
+#     change = 90 - -1 * np.mean(angles)
+#     newImage = imutils.rotate_bound(image, -change)
+#     ax[3].imshow(newImage, cmap='gray')
+#     plt.tight_layout()
+#     plt.show()
+#
+#     # plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage)
+#
+#     # Compute difference between the two lines
+#     angle_difference = np.max(angles) - np.min(angles)
+#
+#     return newImage

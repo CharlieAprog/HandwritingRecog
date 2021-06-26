@@ -212,7 +212,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
         print("path.shape:", path.shape)
         # assert path.shape[0] != 0, "Path has shape (0,), algorithm failed to reach destination."
         if path.shape[0] == 0:
-            print('jeez')
+            print(f'Path could not be generated for line {i+1}')
             continue
         path[:, 0] += offset_from_top
         path = [list(step) for step in path]
