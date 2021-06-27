@@ -141,16 +141,12 @@ def get_hinge_pdf(img_label, imgs):
 
 def get_char_vector(img):
     #returns pdf of hinge features (f2) for one image
-    # img,mask = noise_removal(img)
-    # apply canny to detect the contours of the char
     img[img==1]=255
     img = np.uint8(img)
     img = cv2.GaussianBlur(img, (5, 5), 0)
     #padding for proper Canny edge detection
     img = cv2.copyMakeBorder(img, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
     corners_of_img = cv2.Canny(img, 0, 100)
-    
-    img = noise_removal(corners_of_img)
     
     cont_img = np.asarray(corners_of_img)
     # get the coordinates of the contour pixels

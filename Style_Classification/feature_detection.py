@@ -16,7 +16,7 @@ from Style_Classification.hinge_feature_calc import *
 PI = 3.14159265359
 
 
-def get_style_char_vec(characters, labels,global_vec = False, show_hinge_points=False):
+def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.5,global_vec = False, show_hinge_points=False):
     # main pipeline function to get char
     style_char_vec = []
     chi_squared_vec = []
@@ -61,6 +61,21 @@ def get_style_char_vec(characters, labels,global_vec = False, show_hinge_points=
     archaic_pdfs = {}
     hasmonean_pdfs = {}
     herodian_pdfs = {}
+
+    #style classification for chars with a high prob value;exclude chars<=thresh
+    print('old:')
+    print(len(characters))
+    print(labels)
+    index = np.where(probabilities <= prob_threshold)
+    print(index)
+    characters = np.delete(characters,index)
+    labels = np.delete(labels,index)
+    probabilities = np.delete(probabilities,index)
+    print('now')
+    print(len(characters))
+    print(labels)
+
+    print('characters thresholded out:',sum(index))
 
     if global_vec == False:
 
