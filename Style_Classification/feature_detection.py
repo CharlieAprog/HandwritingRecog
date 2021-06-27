@@ -203,12 +203,16 @@ def get_accuracy_alldata(dataset, archaic_imgs, hasmonean_imgs, herodian_imgs, d
                     hasmonean_pdfs[label] = get_hinge_pdf(label, hasmonean_imgs)
                 if label not in herodian_pdfs:
                     herodian_pdfs[label] = get_hinge_pdf(label, herodian_imgs)
-
+    print(archaic_pdfs['Global'])
+    print(hasmonean_pdfs['Global'])
     print("Images used to construct codebook vector: ", img_in_train)
     cor = 0
     total = 0
     cor_global = 0
     total_global = 0
+    ignored = 0
+    cor_arch, cor_hero, cor_has = 0, 0 , 0
+    wrong_arch, wrong_has, wrong_hero = 0, 0, 0
     for stylename, styledataset_test in dataset_test.items():
         for label, characterset in styledataset_test.items():
             for image in characterset:
@@ -216,26 +220,62 @@ def get_accuracy_alldata(dataset, archaic_imgs, hasmonean_imgs, herodian_imgs, d
                         or label == 'Pe-final' or label == 'Zayin' or label == 'Tsadi-medial'):
                     # calculate vector for char and chisquared distance
                     feature_vector = get_char_vector(image, False)
-                    chiarchaic = get_chisquared(feature_vector, archaic_pdfs['Global'])
-                    chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs['Global'])
-                    chiherodian = get_chisquared(feature_vector, herodian_pdfs['Global'])
-                    minchi = min(chihasmonean, chiherodian, chiarchaic)
-                    # smallest chi squared is the style of char
-                    if stylename == 'archaic' and minchi == chiarchaic: cor_global += 1
-                    if stylename == 'hasmonean' and minchi == chihasmonean: cor_global += 1
-                    if stylename == 'herodian' and minchi == chiherodian: cor_global += 1
-                    total_global += 1
+                    if feature_vector != 0:
+                        chiarchaic = get_chisquared(feature_vector, archaic_pdfs['Global'])
+                        chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs['Global'])
+                        chiherodian = get_chisquared(feature_vector, herodian_pdfs['Global'])
+                        minchi = min(chihasmonean, chiherodian, chiarchaic)
+                        # smallest chi squared is the style of char
+                        if stylename == 'archaic':
+                            if minchi == chiarchaic:
+                                cor_global += 1
+                                cor_arch += 1
+                            else:
+                                wrong_arch += 1
+                        if stylename == 'hasmonean':
+                            if minchi == chihasmonean:
+                                cor_global += 1
+                                cor_has += 1
+                            else:
+                                wrong_has += 1
+                        if stylename == 'herodian':
+                            if minchi == chiherodian:
+                                cor_global += 1
+                                cor_hero += 1
+                            else:
+                                wrong_hero += 1
+                        total_global += 1
+                    else:
+                        ignored += 1
                 else:
                     feature_vector = get_char_vector(image, False)
-                    chiarchaic = get_chisquared(feature_vector, archaic_pdfs[label])
-                    chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs[label])
-                    chiherodian = get_chisquared(feature_vector, herodian_pdfs[label])
-                    minchi = min(chihasmonean, chiherodian, chiarchaic)
-                    # smallest chi squared is the style of char
-                    if stylename == 'archaic' and minchi == chiarchaic: cor += 1
-                    if stylename == 'hasmonean' and minchi == chihasmonean: cor += 1
-                    if stylename == 'herodian' and minchi == chiherodian: cor += 1
-                    total += 1
+                    if feature_vector != 0:
+                        chiarchaic = get_chisquared(feature_vector, archaic_pdfs[label])
+                        chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs[label])
+                        chiherodian = get_chisquared(feature_vector, herodian_pdfs[label])
+                        minchi = min(chihasmonean, chiherodian, chiarchaic)
+                        # smallest chi squared is the style of char
+                        if stylename == 'archaic':
+                            if minchi == chiarchaic:
+                                cor += 1
+                                cor_arch += 1
+                            else:
+                                wrong_arch += 1
+                        if stylename == 'hasmonean':
+                            if minchi == chihasmonean:
+                                cor += 1
+                                cor_has += 1
+                            else:
+                                wrong_has += 1
+                        if stylename == 'herodian':
+                            if minchi == chiherodian:
+                                cor += 1
+                                cor_hero += 1
+                            else:
+                                wrong_hero += 1
+                        total += 1
+                    else:
+                        ignored += 1
 
 
 
@@ -247,6 +287,10 @@ def get_accuracy_alldata(dataset, archaic_imgs, hasmonean_imgs, herodian_imgs, d
                 #     print('label:',label)
                 #     print('predicted:',predicted)
 
-    print('---', total+total_global)
+    print('Total characters', total+total_global)
+    print("Ignored: ", ignored)
     print('Label specific accuracy:', (cor / total))
     print('Global accuracy:', (cor_global / total_global))
+    print("Archaic correct vs wrong", cor_arch, wrong_arch)
+    print("Hasmonean correct vs wrong", cor_has, wrong_has)
+    print("Herodian correct vs wrong", cor_hero, wrong_hero)
