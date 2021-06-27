@@ -1,6 +1,6 @@
 from Style_Classification.Classify_Char_Style import *
 from Style_Classification.Calculate_Hinge_Features import *
-
+from Style_Classification.SVM_Style import *
 
 def get_style_char_images_train_test(style_path: str, character: str):
     """ Returns a list of numpy arrays, where each arrays corresponds to an image from a certain character of a
@@ -164,15 +164,15 @@ if __name__ == '__main__':
 
 #training path for test images (for accuracy of class for individual images)
     #training path
-    style_base_path = '/home/jan/PycharmProjects/HandwritingRecog/data/Style_train_test/'
-    style_archaic_path = style_base_path + 'style_train_test_arch/train/'
-    style_hasmonean_path = style_base_path + 'style_train_test_has/train/'
-    style_herodian_path = style_base_path + 'style_train_test_hero/train/'
+    style_base_path = '/home/jan/PycharmProjects/HandwritingRecog/data/train_test_morph/'
+    style_archaic_path = style_base_path + 'style_train_test_arch_morph/train/'
+    style_hasmonean_path = style_base_path + 'style_train_test_has_morph/train/'
+    style_herodian_path = style_base_path + 'style_train_test_hero_morph/train/'
 
     #testin path
-    style_archaic_path_test = style_base_path + 'style_train_test_arch/val/'
-    style_hasmonean_path_test = style_base_path + 'style_train_test_has/val/'
-    style_herodian_path_test = style_base_path + 'style_train_test_hero/val/'
+    style_archaic_path_test = style_base_path + 'style_train_test_arch_morph/val/'
+    style_hasmonean_path_test = style_base_path + 'style_train_test_has_morph/val/'
+    style_herodian_path_test = style_base_path + 'style_train_test_hero_morph/val/'
 
     
     new_size_x, new_size_y = 40, 40  # change this to something which is backed up by a reason
@@ -202,4 +202,6 @@ if __name__ == '__main__':
         
     dataset_train = {'archaic':archaic_train,'hasmonean':hasmonean_train,'herodian':herodian_train}
     dataset_test = {'archaic':archaic_test,'hasmonean':hasmonean_test,'herodian':herodian_test}
-    get_accuracy_alldata(dataset_train,archaic_train,hasmonean_train,herodian_train, dataset_test)
+
+    get_acc_SVM(dataset_train, dataset_test)
+    #get_accuracy_alldata(dataset_train,archaic_train,hasmonean_train,herodian_train, dataset_test)
