@@ -13,8 +13,7 @@ from Text_Segmentation.characterSegmentation import character_segmentation, remo
 from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRecognizer
 
 
-image_name = "124-Fg004.pbm"
-#image_name = 15
+image_name = "archaic2.jpg"
 
 dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
 # dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
@@ -90,10 +89,18 @@ print("TOTAL CHARACTERS SKIPPED:", characters_skipped)
 print("*"*40)
 print('Getting style classification for all chararcters:')
 #get style labels for each character in the image
-style_vec,chi_squared_vec = get_style_char_vec(all_segmented_characters,all_segmented_labels,all_char_propabilities,prob_threshold = 0.85, global_vec=False, show_hinge_points=2)
+style_vec,chi_squared_vec = get_style_char_vec(all_segmented_characters,all_segmented_labels,all_char_propabilities,prob_threshold = 0.7, global_vec=False, show_hinge_points=2)
 
 #get dominant style of image
 n_neighbors = 10
 dominant_style = get_dominant_style(style_vec,chi_squared_vec,n_neighbors)
 print(dominant_style)
+print(max(dominant_style))
+
+
+#write dominant style in text file
+f = open(f'dominant_style.txt','w')
+f.write(max(dominant_style))
+f.close
+
     # print(f"window: [{shift*idx}-{window_size + shift*idx}]")

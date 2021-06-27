@@ -8,6 +8,7 @@ from Style_Classification.feature_detection import *
 def get_style_char_images(style_path: str, character: str):
     """ Returns a list of numpy arrays, where each arrays corresponds to an image from a certain character of a
     certain class """
+
     if character == 'Global':
         list_for_glob = style_path + '*/*.jpg'
     else:
@@ -17,6 +18,7 @@ def get_style_char_images(style_path: str, character: str):
     assert len(img_list) > 0, "Trying to read image files while being in a wrong folder."
     return img_list
 
+
 def get_angle(x_origin, y_origin, x_up, y_up):
     #get angle for hinge pdf (ph1 or phi2)
     output = math.degrees(math.atan2(y_up-y_origin,x_up-x_origin))
@@ -24,6 +26,7 @@ def get_angle(x_origin, y_origin, x_up, y_up):
         output = 180 + (180 + output)
 
     return output
+
 
 def get_histogram(list_of_contours, dist_between_points, img, show_points=False):
     # get histogram of co-occurences
@@ -33,13 +36,16 @@ def get_histogram(list_of_contours, dist_between_points, img, show_points=False)
     for list_of_cont_cords in list_of_contours:
         i = 0
         while i < (len(list_of_cont_cords) - (2 * dist_between_points)):
-            # low hinge end point
+
+            # low hinge end point calc
             x_low = list_of_cont_cords[i][1]
             y_low = list_of_cont_cords[i][0]
-            # mid point
+
+            # mid point calc
             x_origin = list_of_cont_cords[i + dist_between_points][1]
             y_origin = list_of_cont_cords[i + dist_between_points][0]
-            # 'upper' hinge end point
+
+            # 'upper' hinge end point calc
             x_high = list_of_cont_cords[i + (2 * dist_between_points)][1]
             y_high = list_of_cont_cords[i + (2 * dist_between_points)][0]
 
@@ -48,26 +54,30 @@ def get_histogram(list_of_contours, dist_between_points, img, show_points=False)
             distance_high_leg = abs(y_high - y_origin) + abs(x_high - x_origin)
             if ((dist_between_points-1 <= distance_low_leg <= dist_between_points+1)
                 and (dist_between_points-1 <= distance_high_leg <= dist_between_points+1)):
+
                 phi1 = get_angle(x_origin, (40 - y_origin), x_low, (40 - y_low))
                 phi2 = get_angle(x_origin, (40 - y_origin), x_high, (40 - y_high))
 
                 histogram.append((phi1, phi2))
                 i += dist_between_points
+
                 if show_points:
                     hinge_points.append([(y_low, x_low), (y_origin, x_origin), (y_high, x_high)])
+
             else:
                 i += 1
+
     if show_points:
         for points in hinge_points:
             for j in range(len(points)):
                 img[points[j]] = 150
             plt.imshow(img, cmap='gray')
             plt.show()
+
             for j in range(len(points)):
                 img[points[j]] = 255
 
     return histogram
-
 
 def get_hinge_pdf(img_label, imgs):
     vals = [i * 0 for i in range(300)]
@@ -147,13 +157,8 @@ def get_char_vector(img, image_from_page=True):
     else:
         img, mask = noise_removal(img)
     # #img = cv2.GaussianBlur(img, (5, 5), 0)
-    # plt.show()
-    # plt.imshow(img)
-    # plt.show()
+    
     corners_of_img = cv2.Canny(img, 0, 100)
-    # plt.show()
-    # plt.imshow(corners_of_img)
-    # plt.show()
     cont_img = np.asarray(corners_of_img)
     # get the coordinates of the contour pixels
     contours = np.where(cont_img == 255)
