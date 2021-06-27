@@ -15,16 +15,11 @@ from Text_Segmentation.wordSegmentation import word_segmentation, trim_360
 from Text_Segmentation.characterSegmentation import character_segmentation, remove_character_artifacts, slide_over_word, select_slides, clean_image
 from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRecognizer
 
-<<<<<<< HEAD
 # image_num = 15
 # image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
 #                 "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
 image_name = "124-Fg004.pbm"
 #image_name = 15
-=======
-
-image_name = "archaic2.jpg"
->>>>>>> 715d79aa64438e4cf84df2f75c10ca4570ddb8fa
 
 # new images
 # dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
