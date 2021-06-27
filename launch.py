@@ -4,7 +4,7 @@ import sys
 from matplotlib.pyplot import plot
 # sys.path.append('C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog')
 # sys.path.append('C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/Text_Segmentation/plotting.py')
-from Style_Classification.feature_detection import *
+from Style_Classification.Classify_Char_Style import *
 import numpy as np
 from Text_Segmentation.plotting import plot_simple_images
 import torch
@@ -18,7 +18,7 @@ from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRe
 # image_num = 15
 # image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
 #                 "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
-image_name = "124-Fg004.pbm"
+image_name = "hasmonian1.jpg"
 #image_name = 15
 
 # new images
