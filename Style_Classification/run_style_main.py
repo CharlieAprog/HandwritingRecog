@@ -32,11 +32,13 @@ if __name__ == '__main__':
 
 
 #training path for test images (for accuracy of class for individual images)
+    #training path
     style_base_path = '/home/jan/PycharmProjects/HandwritingRecog/data/Style_train_test/'
     style_archaic_path = style_base_path + 'style_train_test_arch/train/'
     style_hasmonean_path = style_base_path + 'style_train_test_has/train/'
     style_herodian_path = style_base_path + 'style_train_test_hero/train/'
 
+    #testin path
     style_archaic_path_test = style_base_path + 'style_train_test_arch/val/'
     style_hasmonean_path_test = style_base_path + 'style_train_test_has/val/'
     style_herodian_path_test = style_base_path + 'style_train_test_hero/val/'
@@ -45,9 +47,11 @@ if __name__ == '__main__':
     archaic_train = {char:
                        [resize_pad(img, new_size_x, new_size_y, 255) for img in get_style_char_images_train_test(style_archaic_path, char)]
                        for char in archaic_characters}
+
     hasmonean_train = {char:
                          [resize_pad(img, new_size_x, new_size_y, 255) for img in get_style_char_images_train_test(style_hasmonean_path, char)]
                          for char in hasmonean_characters}
+
     herodian_train = {char:
                     [resize_pad(img, new_size_x, new_size_y, 255) for img in get_style_char_images_train_test(style_herodian_path, char)]
                     for char in herodian_characters}
@@ -55,9 +59,11 @@ if __name__ == '__main__':
     archaic_test = {char:
                        [resize_pad(img, new_size_x, new_size_y, 255) for img in get_style_char_images_train_test(style_archaic_path_test, char)]
                        for char in archaic_characters}
+
     hasmonean_test = {char:
                          [resize_pad(img, new_size_x, new_size_y, 255) for img in get_style_char_images_train_test(style_hasmonean_path_test, char)]
                          for char in hasmonean_characters}
+
     herodian_test = {char:
                     [resize_pad(img, new_size_x, new_size_y, 255) for img in get_style_char_images_train_test(style_herodian_path_test, char)]
                     for char in herodian_characters}
