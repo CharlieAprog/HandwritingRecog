@@ -15,11 +15,16 @@ from Text_Segmentation.wordSegmentation import word_segmentation, trim_360
 from Text_Segmentation.characterSegmentation import character_segmentation, remove_character_artifacts, slide_over_word, select_slides, clean_image
 from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRecognizer
 
+<<<<<<< HEAD
 # image_num = 15
 # image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
 #                 "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
 image_name = "124-Fg004.pbm"
 #image_name = 15
+=======
+
+image_name = "archaic2.jpg"
+>>>>>>> 715d79aa64438e4cf84df2f75c10ca4570ddb8fa
 
 # new images
 # dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
@@ -53,6 +58,7 @@ window_size = int(mean_character_width)
 shift = 1
 all_segmented_characters = []
 all_segmented_labels = []
+all_char_propabilities = []
 characters_skipped = 0
 for char_idx, character_segment in enumerate(characters):
     if character_segment.shape[1] > mean_character_width + np.std(
@@ -72,6 +78,7 @@ for char_idx, character_segment in enumerate(characters):
         # plot_simple_images(multiple_characters, title=predictions_string)
         all_segmented_characters.extend(recognised_characters)
         all_segmented_labels.extend(predicted_labels)
+        all_char_propabilities.append(probability)
     else:  # single character
         print("\nSingle character classification")
         if character_segment.size != 0:
@@ -90,17 +97,29 @@ for char_idx, character_segment in enumerate(characters):
             # plot_simple_images([character_segment], title=f'{predicted_label + 1}:{predicted_letter}')
             all_segmented_characters.append(character_segment)
             all_segmented_labels.append(int(predicted_label))
+            all_char_propabilities.append(probability)
         else:
             characters_skipped += 1
 all_segmented_labels = np.asarray(all_segmented_labels)
+all_char_propabilities = np.asarray(all_char_propabilities)
 
 print("*"*40)
 print("TOTAL CHARACTERS SKIPPED:", characters_skipped)
 print("*"*40)
 print('Getting style classification for all chararcters:')
-style_vec,chi_squared_vec = get_style_char_vec(all_segmented_characters,all_segmented_labels, global_vec=True, show_hinge_points=2)
+#get style labels for each character in the image
+style_vec,chi_squared_vec = get_style_char_vec(all_segmented_characters,all_segmented_labels,all_char_propabilities,prob_threshold = 0.7, global_vec=False, show_hinge_points=2)
 
-n_neighbors = len(style_vec)
+#get dominant style of image
+n_neighbors = 10
 dominant_style = get_dominant_style(style_vec,chi_squared_vec,n_neighbors)
 print(dominant_style)
+print(max(dominant_style))
+
+
+#write dominant style in text file
+f = open(f'dominant_style.txt','w')
+f.write(max(dominant_style))
+f.close
+
     # print(f"window: [{shift*idx}-{window_size + shift*idx}]")

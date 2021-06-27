@@ -8,11 +8,13 @@ import Augmentor
 import os
 
 
-
 def augment():
+    #augment data with elastic morphing for style classification training data
+    
     letter_paths = os.listdir('data/Style_classification/Herodian')
     for letter_path in letter_paths:
         print(letter_path)
+
         p = Augmentor.Pipeline(f'data/Style_classification/Herodian/{letter_path}')
         p.random_distortion(probability=0.5, grid_width=3, grid_height=3, magnitude=5)
         p.gaussian_distortion(probability=0.5, grid_width=3, grid_height=3, magnitude=5, corner='bell', method='in')
