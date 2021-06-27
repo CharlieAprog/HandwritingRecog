@@ -4,7 +4,7 @@ from pathlib import Path
 from matplotlib.pyplot import plot
 # sys.path.append('C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog')
 # sys.path.append('C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/Text_Segmentation/plotting.py')
-from Style_Classification.feature_detection import *
+from Style_Classification.Classify_Char_Style import *
 import numpy as np
 from Text_Segmentation.plotting import plot_simple_images
 import torch

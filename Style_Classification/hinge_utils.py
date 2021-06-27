@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-
+from Style_Classification.Classify_Char_Style import *
 def noise_removal(img,morphology=False):
     #remove unneeded nosie from image
     img = cv2.bitwise_not(img)
