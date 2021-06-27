@@ -20,7 +20,7 @@ def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.5,glo
     # main pipeline function to get char
     style_char_vec = []
     chi_squared_vec = []
-    style_base_path = 'data/characters_for_style_classification_balance_morph/'
+    style_base_path = 'data/Style_classification/'
 
     archaic_characters = ['Taw', 'Pe', 'Kaf-final', 'Lamed', 'Nun-final', 'He', 'Qof', 'Kaf', 'Samekh', 'Yod', 'Dalet',
                           'Waw', 'Ayin', 'Mem', 'Gimel', 'Bet', 'Shin', 'Resh', 'Alef', 'Het', 'Global']
@@ -40,15 +40,15 @@ def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.5,glo
 
     # get image dict
     archaic_imgs = {char:
-                        [resize_pad(img, new_size_x, new_size_y,padding_number=255) for img in
+                        [resize_pad(img, new_size_x, new_size_y, 255) for img in
                          get_style_char_images(style_base_path + 'Archaic/', char)]
                     for char in archaic_characters}
     hasmonean_imgs = {char:
-                          [resize_pad(img, new_size_x, new_size_y,padding_number=255) for img in
+                          [resize_pad(img, new_size_x, new_size_y, 255) for img in
                            get_style_char_images(style_base_path + 'Hasmonean/', char)]
                       for char in hasmonean_characters}
     herodian_imgs = {char:
-                         [resize_pad(img, new_size_x, new_size_y,padding_number=255) for img in
+                         [resize_pad(img, new_size_x, new_size_y, 255) for img in
                           get_style_char_images(style_base_path + 'Herodian/', char)]
                      for char in herodian_characters}
     idx2name = {0: 'Alef', 1: 'Ayin', 2: 'Bet', 3: 'Dalet', 4: 'Gimel', 5: 'He',
@@ -103,7 +103,6 @@ def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.5,glo
                 chi_squared_vec.append(minchi)
 
             else:
-                
                 # get hinge pdfs
                 if idx2name[label] not in archaic_pdfs:
                     archaic_pdfs[idx2name[label]] = get_hinge_pdf(idx2name[label], archaic_imgs)
@@ -145,6 +144,11 @@ def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.5,glo
 
         for image, label in zip(characters, labels):
             feature_vector = get_char_vector(image)
+
+            # chi_archaic,p = stats.chi2_contingency(feature_vector+archaic_pdfs)
+            # chi_hasmonean,_ = stats.chi2(feature_vector, hasmonean_pdfs)
+            # chi_herodian,_ = stats.chi2(feature_vector, herodian_pdfs)
+            # print(p)
             chi_archaic = get_chisquared(feature_vector, archaic_pdfs)
             chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs)
             chi_herodian = get_chisquared(feature_vector, herodian_pdfs)
@@ -165,70 +169,84 @@ def get_dominant_style(style_vec, chisquared_vec,n_neighbors = 10 ):
     return Counter(style_vec[:n_neighbors])
 
 
-def get_accuracy_alldata(dataset, archaic_imgs, hasmonean_imgs, herodian_imgs):
-    ##Get accuracy: for finetuning and testing purposes
-    cor = 0
+def get_accuracy_alldata(dataset, archaic_imgs, hasmonean_imgs, herodian_imgs, dataset_test):
+    print("Getting accuracy on the whole char set")
+    archaic_pdfs = {}
+    hasmonean_pdfs = {}
+    herodian_pdfs = {}
+    idx2name = {0: 'Alef', 1: 'Ayin', 2: 'Bet', 3: 'Dalet', 4: 'Gimel', 5: 'He',
+                6: 'Het', 7: 'Kaf', 8: 'Kaf-final', 9: 'Lamed', 10: 'Mem',
+                11: 'Mem-medial', 12: 'Nun-final', 13: 'Nun-medial', 14: 'Pe',
+                15: 'Pe-final', 16: 'Qof', 17: 'Resh', 18: 'Samekh', 19: 'Shin',
+                20: 'Taw', 21: 'Tet', 22: 'Tsadi-final', 23: 'Tsadi-medial',
+                24: 'Waw', 25: 'Yod', 26: 'Zayin', 27: 'Global'}
+    img_in_train =0
+    # calculate all codebook vectors and store them in dict
     for stylename, styledataset in dataset.items():
         for label, characterset in styledataset.items():
+            for image in characterset:
+                img_in_train += 1
             # arhaic dataset doesnt have theselabels: we only label these as hasmonena & herodian
             if (label == 'Tet' or label == 'Tsadi-final' or label == 'Nun-medial' or label == 'Mem-medial'
                     or label == 'Pe-final' or label == 'Zayin' or label == 'Tsadi-medial'):
-                hasmonean_pdf = get_hinge_pdf(label, hasmonean_imgs)
-                herodian_pdf = get_hinge_pdf(label, herodian_imgs)
-                for image in characterset:
-                    # get feature vector of given char and get chisquared for each pdf
-                    feature_vector = get_char_vector(image)
-                    chihasmonean = get_chisquared(feature_vector, hasmonean_pdf)
-                    chiherodian = get_chisquared(feature_vector, herodian_pdf)
-                    minchi = min(chihasmonean, chiherodian)
-
-                    # classify and debug etc
-                    if stylename == 'hasmonean' and minchi == chihasmonean:
-                        cor += 1
-                    if stylename == 'herodian' and minchi == chiherodian:
-                        cor += 1
-
-                    # if minchi == chihasmonean: predicted = 'hasmonean'
-                    # if minchi ==chiherodian: predicted = 'herodian'
-                    # if stylename != predicted :
-                    #     print(' wrong classification')
-                    #     print('true:',stylename)
-                    #     print('label:',label)
-                    #     print('predicted:',predicted)
+                if idx2name[27] not in archaic_pdfs:
+                    archaic_pdfs[idx2name[27]] = get_hinge_pdf(idx2name[27], archaic_imgs)
+                if idx2name[27] not in hasmonean_pdfs:
+                    hasmonean_pdfs[idx2name[27]] = get_hinge_pdf(idx2name[27], hasmonean_imgs)
+                if idx2name[27] not in herodian_pdfs:
+                    herodian_pdfs[idx2name[27]] = get_hinge_pdf(idx2name[27], herodian_imgs)
             else:
                 # get hinge pdfs
-                archaic_pdf = get_hinge_pdf(label, archaic_imgs)
-                hasmonean_pdf = get_hinge_pdf(label, hasmonean_imgs)
-                herodian_pdf = get_hinge_pdf(label, herodian_imgs)
+                if label not in archaic_pdfs:
+                    archaic_pdfs[label] = get_hinge_pdf(label, archaic_imgs)
+                if label not in hasmonean_pdfs:
+                    hasmonean_pdfs[label] = get_hinge_pdf(label, hasmonean_imgs)
+                if label not in herodian_pdfs:
+                    herodian_pdfs[label] = get_hinge_pdf(label, herodian_imgs)
 
-                for image in characterset:
+    print("Images used to construct codebook vector: ", img_in_train)
+    cor = 0
+    total = 0
+    cor_global = 0
+    total_global = 0
+    for stylename, styledataset_test in dataset_test.items():
+        for label, characterset in styledataset_test.items():
+            for image in characterset:
+                if (label == 'Tet' or label == 'Tsadi-final' or label == 'Nun-medial' or label == 'Mem-medial'
+                        or label == 'Pe-final' or label == 'Zayin' or label == 'Tsadi-medial'):
                     # calculate vector for char and chisquared distance
-                    feature_vector = get_char_vector(image)
-                    chiarchaic = get_chisquared(feature_vector, archaic_pdf)
-                    chihasmonean = get_chisquared(feature_vector, hasmonean_pdf)
-                    chiherodian = get_chisquared(feature_vector, herodian_pdf)
-
+                    feature_vector = get_char_vector(image, False)
+                    chiarchaic = get_chisquared(feature_vector, archaic_pdfs['Global'])
+                    chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs['Global'])
+                    chiherodian = get_chisquared(feature_vector, herodian_pdfs['Global'])
+                    minchi = min(chihasmonean, chiherodian, chiarchaic)
+                    # smallest chi squared is the style of char
+                    if stylename == 'archaic' and minchi == chiarchaic: cor_global += 1
+                    if stylename == 'hasmonean' and minchi == chihasmonean: cor_global += 1
+                    if stylename == 'herodian' and minchi == chiherodian: cor_global += 1
+                    total_global += 1
+                else:
+                    feature_vector = get_char_vector(image, False)
+                    chiarchaic = get_chisquared(feature_vector, archaic_pdfs[label])
+                    chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs[label])
+                    chiherodian = get_chisquared(feature_vector, herodian_pdfs[label])
                     minchi = min(chihasmonean, chiherodian, chiarchaic)
                     # smallest chi squared is the style of char
                     if stylename == 'archaic' and minchi == chiarchaic: cor += 1
                     if stylename == 'hasmonean' and minchi == chihasmonean: cor += 1
                     if stylename == 'herodian' and minchi == chiherodian: cor += 1
+                    total += 1
 
-                    # if minchi == chiarchaic: predicted ='archaic'
-                    # if minchi == chihasmonean: predicted = 'hasmonean'
-                    # if minchi ==chiherodian: predicted = 'herodian'
-                    # if stylename != predicted:
-                    #     print(' Wrong classification')
-                    #     print('true:',stylename)
-                    #     print('label:',label)
-                    #     print('predicted:',predicted)
 
-    count = 0
-    # get total number of instances
-    for stylename, styledataset in dataset.items():
-        for label, characterset in styledataset.items():
-            for image in characterset:
-                count += 1
 
-    print('---', count)
-    print('Total accuracy:', (cor / count))
+                # if minchi == chihasmonean: predicted = 'hasmonean'
+                # if minchi ==chiherodian: predicted = 'herodian'
+                # if stylename != predicted :
+                #     print(' wrong classification')
+                #     print('true:',stylename)
+                #     print('label:',label)
+                #     print('predicted:',predicted)
+
+    print('---', total+total_global)
+    print('Label specific accuracy:', (cor / total))
+    print('Global accuracy:', (cor_global / total_global))

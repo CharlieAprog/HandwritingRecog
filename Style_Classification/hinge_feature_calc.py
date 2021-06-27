@@ -1,5 +1,6 @@
 import cv2
 import matplotlib.pyplot as plt
+
 from Style_Classification.feature_detection import *
 
 
@@ -83,11 +84,8 @@ def get_hinge_pdf(img_label, imgs):
             # plt.show()
 
             # apply canny to detect the contours of the char
-            img = cv2.copyMakeBorder(img, 2, 2, 2, 2, cv2.BORDER_CONSTANT, value=0)
-            corners_of_img = cv2.Canny(img, 0, 80)
+            corners_of_img = cv2.Canny(img, 0, 100)
             cont_img = np.asarray(corners_of_img)
-            # plt.imshow(corners_of_img)
-            # plt.show()
 
             # get the coordinates of the contour pixels
             contours = np.where(cont_img == 255)
@@ -139,15 +137,23 @@ def get_hinge_pdf(img_label, imgs):
 
     return massdist
 
-def get_char_vector(img):
+def get_char_vector(img, image_from_page=True):
     #returns pdf of hinge features (f2) for one image
-    img[img==1]=255
+    # img,mask = noise_removal(img)
+    # apply canny to detect the contours of the char
     img = np.uint8(img)
-    img = cv2.GaussianBlur(img, (5, 5), 0)
-    #padding for proper Canny edge detection
-    img = cv2.copyMakeBorder(img, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
+    if image_from_page:
+        img[img == 1] = 255
+    else:
+        img, mask = noise_removal(img)
+    # #img = cv2.GaussianBlur(img, (5, 5), 0)
+    # plt.show()
+    # plt.imshow(img)
+    # plt.show()
     corners_of_img = cv2.Canny(img, 0, 100)
-    
+    # plt.show()
+    # plt.imshow(corners_of_img)
+    # plt.show()
     cont_img = np.asarray(corners_of_img)
     # get the coordinates of the contour pixels
     contours = np.where(cont_img == 255)

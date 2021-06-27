@@ -14,6 +14,7 @@ from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRe
 
 
 image_name = "124-Fg004.pbm"
+#image_name = 15
 
 dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
 # dev_path = f"data/cropped_labeled_images/{image_name}"  # development path

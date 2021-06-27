@@ -187,7 +187,7 @@ def boundingboxcrop(img_name):
 
 def dataset_split(data_path):
 # Accepts a data path and applies training /testing split (0.8 - 0.2)##
-    splitfolders.ratio(data_path, output="final_char_data", seed=1337, ratio=(0.8, 0.2))
+    splitfolders.ratio(data_path, output="style_train_test_has", seed=1337, ratio=(0.8, 0.2))
 
 def noise_removal_grayscale(gray):
     #Removes contours of images that are not the character by masking
