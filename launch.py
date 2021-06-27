@@ -1,4 +1,7 @@
+from operator import mul
 import sys
+
+from matplotlib.pyplot import plot
 # sys.path.append('C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog')
 # sys.path.append('C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/Text_Segmentation/plotting.py')
 from Style_Classification.feature_detection import *
@@ -13,22 +16,30 @@ from Text_Segmentation.characterSegmentation import character_segmentation, remo
 from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRecognizer
 
 # image_num = 15
+# image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
+#                 "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
 image_name = "124-Fg004.pbm"
 #image_name = 15
 
-dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
+# new images
 # dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
-# new_folder_path = f"data/cropped_labeled_images/paths/{image_name[0:-4]}"
+dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
 new_folder_path = f"data/cropped_labeled_images/paths/{image_name[0:-4]}"
+# new_folder_path = f"data/cropped_labeled_images/paths/{image_name[0:-4]}"
 
-print(dev_path)
-# periods_path = "../data/full_images_periods/Hasmonean/hasmonean-330-1.jpg"
-# new_folder_path = f"../data/full_images_periods/Hasmonean/paths/{os.path.basename(periods_path).split('.')[0]}"
+# binary images
+#dev_path = f"data/image-data/binaryRenamed/{1}.jpg"  # development path
+#new_folder_path = f"data/image-data/binaryRenamed/paths/{str(1)}"
 
 section_images = line_segmentation(dev_path, new_folder_path)
 # plot_simple_images(section_images)
 lines, words_in_lines = word_segmentation(section_images)
+# plot_simple_images(lines)
+# for lines in words_in_lines:
+#     plot_simple_images(lines)
 characters, single_character_widths, mean_character_width = character_segmentation(words_in_lines)
+
+
 
 model = TheRecognizer()
 model.load_model(model.load_checkpoint('40_char_rec.ckpt', map_location=torch.device('cpu')))
@@ -53,6 +64,7 @@ for char_idx, character_segment in enumerate(characters):
                                                                 window_size, name2idx)
         multiple_characters = copy.deepcopy(recognised_characters)
         multiple_characters.append(character_segment)
+        plot_simple_images(multiple_characters)
         # recognised_characters.append(character_segment)
         predictions_string = ''
         for label in predicted_labels:
@@ -64,7 +76,8 @@ for char_idx, character_segment in enumerate(characters):
         print("\nSingle character classification")
         if character_segment.size != 0:
         # try:
-        #     character_segment = clean_image(character_segment, thresh_side=50000)
+            character_segment = clean_image(character_segment, thresh_side=50000)
+            plot_simple_images([character_segment])
         # except:
         #     plt.imshow(character_segment)
         #     plt.title("get_component_clusters failed.")

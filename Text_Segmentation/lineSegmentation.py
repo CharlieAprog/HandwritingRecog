@@ -72,7 +72,8 @@ def get_lines(new_image):
     """
     # A) Obtain active pixels in each row (horizontal projection)
     # unicode(x.strip()) if x is not None else ''
-    h_hist = [len(row.nonzero()[0]) if len(row.nonzero()[0]) < 400 or (i > 20 and  i < len(new_image) - 20) else 0 for i, row in enumerate(new_image)]
+    h_hist = [0 if len(row.nonzero()[0]) > 500 and (i < 20 and  i > len(new_image) - 20) else len(row.nonzero()[0]) for i, row in enumerate(new_image)]
+
     print(h_hist)
     h_hist = ss.savgol_filter(h_hist, 7, 3)
 
@@ -138,8 +139,8 @@ def get_lines(new_image):
         locations_extended[sec + 1][0] - locations_extended[sec][1]
         for sec in range(len(locations_extended) - 1)
     ]
-    # min_distance = calc_outlier(distances) if calc_outlier(distances) > 15 else 15
-    min_distance = 10
+    min_distance = calc_outlier(distances) if calc_outlier(distances) > 15 else 15
+    # min_distance = 10
 
     # min_distance = 18
     print(distances, '\n', min_distance)
@@ -268,9 +269,11 @@ def load_path(file_name):
 
 def line_segmentation(img_path, new_folder_path):
     image = get_binary(rotate_image(get_image(img_path, hough_transform=True)))
+    image = cv2.resize(image, (3608, 2706))
     dilated_image = copy.deepcopy(image)
-    kernel = np.ones((2, 2), 'uint8')
+    kernel = np.ones((3, 3), 'uint8')
     dilated_image = cv2.dilate(dilated_image, kernel, iterations=1)
+    plot_simple_images([image, dilated_image], "Original image vs dilated image")
     # plot_simple_images([image, dilated_image], title="Original vs Dilated image")
     if not os.path.exists(new_folder_path):
         print("Running line segmentation on new image...")
@@ -584,7 +587,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
         # assert path.shape[0] != 0, "Path has shape (0,), algorithm failed to reach destination."
         if path.shape[0] == 0:
             print(f'Path could not be generated for line {i}')
-            # TODO: Add straight line if this still occurs
+            path = [(0,i) for i in range(binary_image.shape[1])]
             continue
         path[:, 0] += offset_from_top
         path = [list(step) for step in path]

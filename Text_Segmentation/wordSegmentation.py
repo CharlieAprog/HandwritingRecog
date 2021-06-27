@@ -1,12 +1,9 @@
-from skimage.filters import threshold_otsu
 import numpy as np
 from Text_Segmentation.lineSegmentation import timer
 
 
 def trim_section(section, section_threshold=10):
     """ Function for removing padding from left and right side of a character section """
-    thresh = threshold_otsu(section)
-    section = section > thresh
     vertical_projection = np.sum(section, axis=0)
     b1 = 0
     b2 = 0
@@ -89,7 +86,7 @@ def segment_words(section, vertical_projection):
     return new_dividers
 
 
-def trim_360(image, section_thresh=15):
+def trim_360(image, section_thresh=5):
     """ Returns an image with no padding on either side """
     trim1 = trim_section(np.rot90(image).astype(int), section_threshold=section_thresh)
     trim2 = trim_section(np.rot90(trim1, axes=(1, 0)).astype(int), section_threshold=section_thresh - 5)

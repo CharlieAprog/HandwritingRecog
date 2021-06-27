@@ -17,6 +17,16 @@ def slide_over_word(word, window_size, shift):
     images.append(word[:, word.shape[1] - window_size: word.shape[1]])
     return images
 
+def clean_image(image, thresh_side = 500, thresh_mid=20, trim_thresh=4, skip_left_pruning= False, skip_right_pruning = False ):
+    # image = get_binary(image)
+    image = image.astype(np.uint8)
+    new = remove_character_artifacts(image, skip_left_pruning=skip_left_pruning, skip_right_pruning= skip_right_pruning, internal_min_cluster=thresh_mid)
+    new = trim_360(new, section_thresh=trim_thresh)
+    if new.size == 0:
+        new = image
+    return new
+
+
 
 def get_sliding_words(words_in_lines, window_size, shift):
     sliding_words_in_line = []
@@ -119,6 +129,7 @@ def run_character_segment(words_in_lines):
     segmented_word_box_images = []
     segmented_word_box_areas = []
     all_box_boundaries = []
+    count = 0
     for line_idx, line in enumerate(words_in_lines):
         line_word_images = []
         line_word_areas = []
@@ -129,9 +140,11 @@ def run_character_segment(words_in_lines):
             line_word_images.append(pixels)
             line_word_areas.append(areas)
             box_boundaries_lines.append(box_boundaries)
+            count += len(box_boundaries_lines)
         segmented_word_box_images.append(line_word_images)
         segmented_word_box_areas.append(line_word_areas)
         all_box_boundaries.append(box_boundaries_lines)
+    print('run character segment:',count)
     return segmented_word_box_images, segmented_word_box_areas, all_box_boundaries
 
 
@@ -155,6 +168,16 @@ def is_image_border_active(character):
 
 
 def get_character_area_outlier(segmented_word_box_areas):
+    
+    chars = []
+    for line in segmented_word_box_areas:
+        for word in line:
+            for char in word:
+                chars.append(char)
+    avg_area = np.mean(chars)
+    print("*"*40)
+    print("Average Character area", avg_area)
+    print("*"*40)
     # Empirically observed values
     min_area = 500
     max_area = 8000  # anything above 8000 is undoubtedly more than 1 character in any test image
@@ -166,6 +189,8 @@ def get_character_area_outlier(segmented_word_box_areas):
     # Filter artifacts that are still small, but large enough to be mistaken for words, where filtering is based on
     # the average word size of the current document
     outlier_thr = calc_outlier(flat_boxes_thr)
+    if outlier_thr < min_area:
+        outlier_thr = min_area
     return outlier_thr
 
 
@@ -175,6 +200,15 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
     """
 
     outlier_thr = get_character_area_outlier(segmented_word_box_areas)
+    print("*"*40)
+    print("outlier_thr", outlier_thr)
+    print("*"*40)
+    char_num = 0
+    for line in segmented_word_box_images:
+        for word in line:
+            for char in word:
+                char_num += 1
+    print("Number of characters before filtering:", char_num)
 
     filtered_word_box_images = []
     character_widths = []
@@ -198,10 +232,12 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
                                     skip_left_pruning = True
                                 if x_max == new_cluster.shape[1]:
                                     skip_right_pruning = True
-                                if taller_cluster != [] and np.sum(character) > 500 :
+                                if taller_cluster != []:
+                                    print("taller cluster sum:", np.sum(taller_cluster),"\nregular cluster sum:", np.sum(character))
                                     # plot_simple_images([character, taller_cluster, clean_image(taller_cluster)])
                                     if is_image_border_active(taller_cluster):
-                                        word_list.append(clean_image(character, skip_left_pruning=skip_left_pruning, skip_right_pruning=skip_right_pruning))
+                                        print('here')
+                                        word_list.append(clean_image(character,  skip_left_pruning=skip_left_pruning, skip_right_pruning=skip_right_pruning))
                                     else:
                                         word_list.append(clean_image(taller_cluster, skip_left_pruning=skip_left_pruning, skip_right_pruning=skip_right_pruning))
                                     character_widths.append(word_list[-1].shape[1])
@@ -209,6 +245,16 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
                     line_list.append(word_list)
         if line_list != []:
             filtered_word_box_images.append(line_list)
+    print('filter characters',len(filtered_word_box_images))
+
+    char_num = 0
+    for line in filtered_word_box_images:
+        for word in line:
+            for char in word:
+                char_num += 1
+    print("*"*40)
+    print("Number of characters after filtering:", char_num)
+    print("*"*40)
     return filtered_word_box_images, character_widths
 
 
@@ -230,7 +276,7 @@ def filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_
                         skip_left_pruning = True
                     if x_max == eroded_img.shape[1]:
                         skip_right_pruning = True
-                    if taller_cluster != [] and np.sum(image) > 500 :
+                    if taller_cluster != [] and np.sum(image) > 500:
                         if is_image_border_active(taller_cluster):
                             filtered_images.append(clean_image(image, skip_left_pruning=skip_left_pruning,skip_right_pruning=skip_right_pruning))
                         else:
@@ -238,7 +284,7 @@ def filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_
     return filtered_images
 
 
-def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False, min_cluster=500,
+def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False,
                                internal_min_cluster=30):
     img_copy = copy.deepcopy(image)
     num_labels, labels = cv2.connectedComponents(img_copy, connectivity=4)
@@ -256,6 +302,7 @@ def remove_character_artifacts(image, skip_left_pruning=False, skip_right_prunin
         right_border = img_copy[:, -1]
         for cluster in clusters:
             if np.sum(cluster) < min_cluster:
+                # clean artifacts at the borders
                 for y, x in cluster:
                     if (x == 0 and left_border[y] and not skip_left_pruning
                         or x == img_copy.shape[1] - 1 and right_border[y] and not skip_right_pruning) \
@@ -263,6 +310,7 @@ def remove_character_artifacts(image, skip_left_pruning=False, skip_right_prunin
                         for y, x in cluster:
                             img_copy[y, x] = 0
                         break
+                # clean artifacts inside
                 if np.sum(cluster) < internal_min_cluster:
                     for y, x in cluster:
                         for y, x in cluster:
@@ -280,16 +328,6 @@ def destructure_characters(characters_in_line):
                 characters.append(character.astype(int))
 
     return characters
-
-
-def clean_image(image, thresh_side=500, thresh_mid=30, trim_thresh=10, skip_left_pruning= False, skip_right_pruning = False ):
-    # image = get_binary(image)
-    image = image.astype(np.uint8)
-    new = remove_character_artifacts(image, skip_left_pruning=skip_left_pruning, skip_right_pruning= skip_right_pruning, min_cluster=thresh_side, internal_min_cluster=thresh_mid)
-    if new.size == 0:
-        new = image
-    new = trim_360(new, section_thresh=trim_thresh)
-    return new
 
 
 def select_slides(sliding_characters, predicted_char_num, model, window_size, name2idx):
