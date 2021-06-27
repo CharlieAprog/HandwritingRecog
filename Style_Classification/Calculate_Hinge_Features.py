@@ -213,7 +213,7 @@ def get_char_vector(img, image_from_page=True):
 
     # check if the image is giving a significant amount of angles to use, otherwise ignore the image
     # for classification
-    if len(hist) > 25:
+    if len(hist) > 20:
         #return pdf
         return [element/sum(feature_vector) for element in feature_vector]
     else:

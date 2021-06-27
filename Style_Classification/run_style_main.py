@@ -63,18 +63,13 @@ def get_accuracy_alldata(dataset, archaic_imgs, hasmonean_imgs, herodian_imgs, d
     print(hasmonean_pdfs['Global'])
     print("Images used to construct codebook vector: ", img_in_train)
 
-    cor = 0
-    total = 0
-    cor_global = 0
-    total_global = 0
-    ignored = 0
+    cor, total, cor_global, total_global, ignored  = 0, 0, 0, 0, 0
     cor_arch, cor_hero, cor_has = 0, 0, 0
     wrong_arch, wrong_has, wrong_hero = 0, 0, 0
 
     for stylename, styledataset_test in dataset_test.items():
         for label, characterset in styledataset_test.items():
             for image in characterset:
-
                 if (label == 'Tet' or label == 'Tsadi-final' or label == 'Nun-medial' or label == 'Mem-medial'
                         or label == 'Pe-final' or label == 'Zayin' or label == 'Tsadi-medial'):
 
@@ -115,7 +110,6 @@ def get_accuracy_alldata(dataset, archaic_imgs, hasmonean_imgs, herodian_imgs, d
                 else:
 
                     feature_vector = get_char_vector(image, False)
-
                     if feature_vector != 0:
                         chiarchaic = get_chisquared(feature_vector, archaic_pdfs[label])
                         chihasmonean = get_chisquared(feature_vector, hasmonean_pdfs[label])
@@ -139,7 +133,6 @@ def get_accuracy_alldata(dataset, archaic_imgs, hasmonean_imgs, herodian_imgs, d
 
                         if stylename == 'herodian':
                             if minchi == chiherodian:
-
                                 cor += 1
                                 cor_hero += 1
                             else:
@@ -151,7 +144,7 @@ def get_accuracy_alldata(dataset, archaic_imgs, hasmonean_imgs, herodian_imgs, d
     print('Total characters', total+total_global)
     print("Ignored: ", ignored)
     print('Label specific accuracy:', (cor / total))
-    print('Global accuracy:', (cor_global / total_global))
+    print('Global codebook for excluded labels accuracy:', (cor_global / total_global))
     print("Archaic correct vs wrong", cor_arch, wrong_arch)
     print("Hasmonean correct vs wrong", cor_has, wrong_has)
     print("Herodian correct vs wrong", cor_hero, wrong_hero)
