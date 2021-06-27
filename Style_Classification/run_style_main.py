@@ -45,7 +45,6 @@ if __name__ == '__main__':
     style_herodian_path_test = style_base_path + 'style_train_test_hero_morph/val/'
 
     
-    
     new_size_x, new_size_y = 40, 40  # change this to something which is backed up by a reason
     archaic_train = {char:
                        [resize_pad(img, new_size_x, new_size_y, 255) for img in get_style_char_images_train_test(style_archaic_path, char)]

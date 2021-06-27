@@ -1,7 +1,7 @@
 import math
 import cv2
 from skimage import feature
-from hinge_utils import *
+from Style_Classification.hinge_utils import *
 from Text_Segmentation.segmentation_to_recog import resize_pad
 # from segmentation_to_recog import resize_pad
 import matplotlib.pyplot as plt

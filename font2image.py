@@ -1,8 +1,10 @@
 #Uses pillow (you can also use another imaging library if you want)
 from PIL import Image, ImageFont, ImageDraw
+from pathlib import Path
+import numpy as np
 
 #Load the font and set the font size to 42
-font = ImageFont.truetype('Habbakuk.ttf', 42)
+# font = ImageFont.truetype('data/habbakuk/Habbakuk.ttf', 42)
 
 #Character mapping for each of the 27 tokens
 char_map = {'Alef' : ')', 
@@ -50,5 +52,51 @@ def create_image(label, img_size):
 
 #Create a 50x50 image of the Alef token and save it to disk
 #To get the raw data cast it to a numpy array
-img = create_image('Alef', (50, 50))
-img.save('example_alef.png')
+# img = create_image('Yod', (50, 50))
+# img.save('example_alef.png')
+
+
+def labeltotxt(labels,img_name):
+    letters = {
+    0:"א",
+    1:"ע",
+    2:"ב",
+    3:"ד",
+    4:"ג",
+    5:"ה",
+    6:"ח",
+    7:"כ",
+    8:"ך",
+    9:"ל",
+    10:"מ",
+    11:"ם",
+    12:"ן",
+    13:"נ",
+    14:"פ",
+    15:"ף",
+    16:"ק",
+    17:"ר",
+    18:"ס",
+    19:"ש",
+    20:"ת",
+    21:"ט",
+    22:"ץ",
+    23:"צ",
+    24:"ו",
+    25:"י",
+    26:"ז",
+    27:"\n"}
+
+    f = open(f'results/{img_name}_characters.txt','a',encoding = 'utf-8')
+    string = []
+    for label in labels:
+        f.write(letters[label])
+        
+   
+
+
+Path('results/').mkdir(parents=True, exist_ok=True) 
+
+
+labeltotxt([0,1,2,3,4,5,6,7,27,0,1,2,3,4,5,6,7],'fg001')
+#Character mapping for each of the 27 tokens
