@@ -1,3 +1,4 @@
+from matplotlib.pyplot import plot
 from numpy.testing._private.utils import print_assert_equal
 from Text_Segmentation.plotting import *
 from Text_Segmentation.lineSegmentation import calc_outlier
@@ -82,21 +83,23 @@ def dialate_clusters(word, kernel=(5, 3)):
 
 def get_box_images(box_boundaries, word):
     """Returns all the bounded images and areas thereof within a word -- that can contain any number of characters """
+    new_word = copy.deepcopy(word)
+    new_word = np.insert(new_word, 0, 0, axis=1)
     box_images = []
     box_areas = []
     for box in box_boundaries:
         y_min = box[0][0]
         y_max = box[0][1]
-        x_min = box[1][0] - 1
+        x_min = box[1][0] -1 if box[1][0] -1  != -1 else 0
         x_max = box[1][1] + 1
-        box_img = word[y_min:y_max, x_min:x_max]
+        box_img = new_word[y_min:y_max, x_min:x_max]
         box_areas.append(abs(y_max - y_min) * abs(x_max - x_min))
         box_images.append(box_img)
-    return box_images, box_areas
+    return box_images, box_areas, new_word
 
 
-def erode_clusters(word, kernel=(4, 4), iter_num=1):
-    kernel = np.ones((4, 4), np.uint8)
+def erode_clusters(word, kernel, iter_num=1):
+    kernel = np.ones(kernel, np.uint8)
     word = cv2.erode(word, kernel, iterations=iter_num)
     num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
     clusters = get_component_clusters(num_labels, clusters)
@@ -106,12 +109,14 @@ def erode_clusters(word, kernel=(4, 4), iter_num=1):
 
 
 def character_segment(word, title=None):
-    cluster_threshold = 10
+    cluster_threshold = 7
     word = word.astype(np.uint8)
     print("Running character segmentation...")
     num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
     clusters = get_component_clusters(num_labels, clusters)
     box_boundaries = get_bounding_box_boundaries(word, clusters)
+    # sort characters from left to right
+    box_boundaries = sorted(box_boundaries, key=lambda x: x[1][1])
     num_boxes = len(box_boundaries)
     while num_boxes > cluster_threshold:
         box_boundaries, word = dialate_clusters(word)
@@ -119,10 +124,11 @@ def character_segment(word, title=None):
         print(num_boxes)
     # erosion, character segment, dialate clusters
 
-    box_images, box_areas = get_box_images(box_boundaries, word)
-    # plotConnectedComponentBoundingBoxes(word, box_boundaries, title = title)
+    box_images, box_areas, new_word = get_box_images(box_boundaries, word)
+    # plot_connected_component_bounding_boxes(word, box_boundaries, title = title)
     print("Character segmentation complete.")
-    return box_images, box_areas, word, box_boundaries
+    # plot_simple_images(box_images)
+    return box_images, box_areas, new_word, box_boundaries
 
 
 def run_character_segment(words_in_lines):
@@ -135,9 +141,9 @@ def run_character_segment(words_in_lines):
         line_word_areas = []
         box_boundaries_lines = []
         for word_idx, word in enumerate(line):
-            pixels, areas, new_word, box_boundaries = character_segment(word, title="[OLD]")
-            words_in_lines[line_idx][word_idx] = new_word
-            line_word_images.append(pixels)
+            box_images, areas, word, box_boundaries = character_segment(word, title="[OLD]") #have them here
+            words_in_lines[line_idx][word_idx] = word
+            line_word_images.append(box_images)
             line_word_areas.append(areas)
             box_boundaries_lines.append(box_boundaries)
             count += len(box_boundaries_lines)
@@ -145,6 +151,7 @@ def run_character_segment(words_in_lines):
         segmented_word_box_areas.append(line_word_areas)
         all_box_boundaries.append(box_boundaries_lines)
     print('run character segment:',count)
+
     return segmented_word_box_images, segmented_word_box_areas, all_box_boundaries
 
 
@@ -175,9 +182,9 @@ def get_character_area_outlier(segmented_word_box_areas):
             for char in word:
                 chars.append(char)
     avg_area = np.mean(chars)
-    print("*"*40)
-    print("Average Character area", avg_area)
-    print("*"*40)
+    #print("*"*40)
+    #print("Average Character area", avg_area)
+    #print("*"*40)
     # Empirically observed values
     min_area = 500
     max_area = 8000  # anything above 8000 is undoubtedly more than 1 character in any test image
@@ -225,18 +232,16 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
                             new_cluster = words_in_lines[i][j]
                             boundries = all_box_boundaries[i][j][k]
                             if not is_boundary_included(all_box_boundaries[i][j], boundries):
-                                x_min = boundries[1][0]
-                                x_max = boundries[1][1]
-                                taller_cluster = new_cluster[:, x_min - 1:x_max + 1]
+                                x_min = boundries[1][0] -1 if boundries[1][0] -1 != -1 else 0
+                                x_max = boundries[1][1] +1
+                                taller_cluster = new_cluster[:, x_min:x_max]
                                 if x_min == 0:
                                     skip_left_pruning = True
                                 if x_max == new_cluster.shape[1]:
                                     skip_right_pruning = True
                                 if taller_cluster != []:
-                                    print("taller cluster sum:", np.sum(taller_cluster),"\nregular cluster sum:", np.sum(character))
                                     # plot_simple_images([character, taller_cluster, clean_image(taller_cluster)])
                                     if is_image_border_active(taller_cluster):
-                                        print('here')
                                         word_list.append(clean_image(character,  skip_left_pruning=skip_left_pruning, skip_right_pruning=skip_right_pruning))
                                     else:
                                         word_list.append(clean_image(taller_cluster, skip_left_pruning=skip_left_pruning, skip_right_pruning=skip_right_pruning))
@@ -261,6 +266,7 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
 def filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_box_img_list, eroded_box_boundaries,
                              eroded_img):
     outlier_thr = get_character_area_outlier(segmented_word_box_areas)
+    plot_simple_images([eroded_img], title= 'before')
     filtered_images = []
     for i, image in enumerate(eroded_box_img_list):
         if image.size != 0:
@@ -269,14 +275,14 @@ def filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_
             if eroded_box_areas[i] >= outlier_thr:
                 boundary = eroded_box_boundaries[i]
                 if not is_boundary_included(eroded_box_boundaries, boundary):
-                    x_min = boundary[1][0]
-                    x_max = boundary[1][1]
-                    taller_cluster = eroded_img[:, x_min - 1:x_max + 1]
+                    x_min = boundary[1][0]  -1 if boundary[1][0] -1 != -1 else 0
+                    x_max = boundary[1][1] +1
+                    taller_cluster = eroded_img[:, x_min:x_max]
                     if x_min == 0:
                         skip_left_pruning = True
                     if x_max == eroded_img.shape[1]:
                         skip_right_pruning = True
-                    if taller_cluster != [] and np.sum(image) > 500:
+                    if taller_cluster != []:
                         if is_image_border_active(taller_cluster):
                             filtered_images.append(clean_image(image, skip_left_pruning=skip_left_pruning,skip_right_pruning=skip_right_pruning))
                         else:
@@ -325,8 +331,7 @@ def destructure_characters(characters_in_line):
     for line in characters_in_line:
         for word in line:
             for character in word:
-                characters.append(character.astype(int))
-
+                characters.append(character)
     return characters
 
 
@@ -384,42 +389,48 @@ def character_segmentation(words_in_lines):
                                                                              segmented_word_box_images,
                                                                              all_box_boundaries,
                                                                              words_in_lines)
-    characters = destructure_characters(filtered_word_box_images_all_lines)
+    # characters = destructure_characters(filtered_word_box_images_all_lines)
     single_character_widths = [width for width in character_widths if width <= 120]
     mean_character_width = np.mean(single_character_widths)
 
     all_suspected = 0
     changed = 0
     characters_eroded = []
-    for char_idx, character_segment in enumerate(characters):
-        if character_segment.shape[1] > mean_character_width + np.std(single_character_widths):
-            all_suspected += 1
-            # Run connected components to get number of labels, so merged clusters are identified beforehand
-            character_segment = character_segment.astype(np.uint8)
-            num_labels, clusters = cv2.connectedComponents(character_segment, connectivity=4)
-            clusters = get_component_clusters(num_labels, clusters)
-            box_boundaries = get_bounding_box_boundaries(character_segment, clusters)
+    for line in filtered_word_box_images_all_lines:
+        eroded_lines = []
+        for word in line:
+            eroded_words = []
+            for char_idx, character_segment in enumerate(word):
+                if character_segment.shape[1] > mean_character_width + np.std(single_character_widths):
+                    
+                    all_suspected += 1
+                    # Run connected components to get number of labels, so merged clusters are identified beforehand
+                    character_segment = character_segment.astype(np.uint8)
+                    num_labels, clusters = cv2.connectedComponents(character_segment, connectivity=4)
+                    clusters = get_component_clusters(num_labels, clusters)
+                    box_boundaries = get_bounding_box_boundaries(character_segment, clusters)
 
-            eroded_img_boundaries, eroded_img = erode_clusters(character_segment, kernel=(2, 2), iter_num=3)
-            print(num_labels, len(eroded_img_boundaries))
-            # plotSimpleImages([eroded_img], title="eroded character")
-            eroded_box_img_list, eroded_box_areas = get_box_images(eroded_img_boundaries, eroded_img)
-            filtered_eroded_box_img_list = filter_eroded_characters(segmented_word_box_areas, eroded_box_areas,
-                                                                    eroded_box_img_list, eroded_img_boundaries,
-                                                                    eroded_img)
-            if len(eroded_img_boundaries) > len(box_boundaries):
-                changed += 1
-                temp_list = []
-                for img in filtered_eroded_box_img_list:
-                    kernel = np.ones((2, 2), np.uint8)
-                    img = img.astype(np.uint8)
-                    if img.size > 0:
-                        dialated_img = cv2.dilate(img, kernel, iterations=3)
-                        characters_eroded.append(dialated_img)
-                        temp_list.append(dialated_img)
-                temp_list.append(character_segment)
-                # plotSimpleImages(temp_list, title='Dialation and erosion')
-        else:
-            characters_eroded.append(character_segment)
+                    eroded_img_boundaries, eroded_img = erode_clusters(character_segment, (2, 2), iter_num=6)
+                    eroded_box_img_list, eroded_box_areas, eroded_img = get_box_images(eroded_img_boundaries, eroded_img)
+                    # TODO: Dilation and Connected components before filtering
+                    filtered_eroded_box_img_list = filter_eroded_characters(segmented_word_box_areas, eroded_box_areas,
+                                                                            eroded_box_img_list, eroded_img_boundaries,
+                                                                            eroded_img)
+                    if len(eroded_img_boundaries) > len(box_boundaries):
+                        changed += 1
+                        temp_list = []
+                        for img in filtered_eroded_box_img_list:
+                            kernel = np.ones((2, 2), np.uint8)
+                            img = img.astype(np.uint8)
+                            if img.size > 0:
+                                dialated_img = cv2.dilate(img, kernel, iterations=6)
+                                eroded_words.append(dialated_img)
+                                temp_list.append(dialated_img)
+                        temp_list.append(character_segment)
+                        # plotSimpleImages(temp_list, title='Dialation and erosion')
+                else:
+                    eroded_words.append(character_segment)
+            eroded_lines.append(eroded_words)
+        characters_eroded.append(eroded_lines)
     print(f'all:{all_suspected}, changed:{changed}')
     return characters_eroded, single_character_widths, mean_character_width

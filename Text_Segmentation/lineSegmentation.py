@@ -268,8 +268,12 @@ def load_path(file_name):
 
 
 def line_segmentation(img_path, new_folder_path):
-    image = get_binary(rotate_image(get_image(img_path, hough_transform=True)))
-    image = cv2.resize(image, (3608, 2706))
+    image = rotate_image(get_image(img_path, hough_transform=True))
+    # image = get_binary(cv2.resize(image, (3608, 2706)))
+    width, height = image.shape[1], image.shape[0]
+    ratio = int(3608/height) if int(3608/height) < int(2706/width) else int(2706/width)
+    
+    image = get_binary(cv2.resize(image, (ratio*image.shape[1], ratio*image.shape[0])))
     dilated_image = copy.deepcopy(image)
     kernel = np.ones((3, 3), 'uint8')
     dilated_image = cv2.dilate(dilated_image, kernel, iterations=1)
@@ -587,11 +591,16 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
         # assert path.shape[0] != 0, "Path has shape (0,), algorithm failed to reach destination."
         if path.shape[0] == 0:
             print(f'Path could not be generated for line {i}')
-            path = [(0,i) for i in range(binary_image.shape[1])]
+            path = [(nmap.shape[0]//2,i) for i in range(binary_image.shape[1])]
             continue
         path[:, 0] += offset_from_top
         path = [list(step) for step in path]
         paths.append(path)
+    
+    top_path =[(0,i) for i in range(binary_image.shape[1])]
+    bottom_path =[(binary_image.shape[0],i) for i in range(binary_image.shape[1])]
+    paths.insert(0, top_path)
+    paths.append(bottom_path)
     return paths
 
 

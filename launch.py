@@ -12,13 +12,13 @@ import os
 import copy
 from Text_Segmentation.lineSegmentation import line_segmentation
 from Text_Segmentation.wordSegmentation import word_segmentation, trim_360
-from Text_Segmentation.characterSegmentation import character_segmentation, remove_character_artifacts, slide_over_word, select_slides, clean_image
+from Text_Segmentation.characterSegmentation import character_segmentation, remove_character_artifacts, slide_over_word, select_slides, clean_image, destructure_characters
 from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRecognizer
 
 # image_num = 15
 # image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
 #                 "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
-image_name = "124-Fg004.pbm"
+image_name = "hasmonean3.jpg"
 #image_name = 15
 
 # new images
@@ -34,10 +34,7 @@ new_folder_path = f"data/cropped_labeled_images/paths/{image_name[0:-4]}"
 section_images = line_segmentation(dev_path, new_folder_path)
 # plot_simple_images(section_images)
 lines, words_in_lines = word_segmentation(section_images)
-# plot_simple_images(lines)
-# for lines in words_in_lines:
-#     plot_simple_images(lines)
-characters, single_character_widths, mean_character_width = character_segmentation(words_in_lines)
+characters_word_line, single_character_widths, mean_character_width = character_segmentation(words_in_lines)
 
 
 
@@ -55,51 +52,80 @@ all_segmented_characters = []
 all_segmented_labels = []
 all_char_propabilities = []
 characters_skipped = 0
-for char_idx, character_segment in enumerate(characters):
-    if character_segment.shape[1] > mean_character_width + np.std(
-            single_character_widths):  # multiple characters suspected
-        print("\nMultiple characters classifictiaon")
-        predicted_char_num = round(character_segment.shape[1] / mean_character_width)
-        sliding_characters = slide_over_word(character_segment, window_size, shift)
-        recognised_characters, predicted_labels = select_slides(sliding_characters, predicted_char_num, model,
-                                                                window_size, name2idx)
-        multiple_characters = copy.deepcopy(recognised_characters)
-        multiple_characters.append(character_segment)
-        plot_simple_images(multiple_characters)
-        # recognised_characters.append(character_segment)
-        predictions_string = ''
-        for label in predicted_labels:
-            predictions_string = f'{predictions_string}, {list(name2idx.keys())[label]}'
-        # plot_simple_images(multiple_characters, title=predictions_string)
-        all_segmented_characters.extend(recognised_characters)
-        all_segmented_labels.extend(predicted_labels)
-        all_char_propabilities.append(probability)
-    else:  # single character
-        print("\nSingle character classification")
-        if character_segment.size != 0:
-        # try:
-            character_segment = clean_image(character_segment, thresh_side=50000)
-            plot_simple_images([character_segment])
-        # except:
-        #     plt.imshow(character_segment)
-        #     plt.title("get_component_clusters failed.")
-        #     plt.show()
-        #     exit()
+for line in characters_word_line:
+    line_imgs = []
+    line_labels = []
+    for word in line:
+        word_imgs = []
+        word_labels = []
+        for char_idx, character_segment in enumerate(word):
+            if character_segment.shape[1] > mean_character_width + np.std(
+                    single_character_widths):  # multiple characters suspected
+                print("\nMultiple characters classifictiaon")
+                predicted_char_num = round(character_segment.shape[1] / mean_character_width)
+                sliding_characters = slide_over_word(character_segment, window_size, shift)
+                recognised_characters, predicted_labels = select_slides(sliding_characters, predicted_char_num, model,
+                                                                        window_size, name2idx)
+                multiple_characters = copy.deepcopy(recognised_characters)
+                multiple_characters.append(character_segment)
+                # plot_simple_images(multiple_characters)
+                # recognised_characters.append(character_segment)
+                predictions_string = ''
+                for label in predicted_labels:
+                    predictions_string = f'{predictions_string}, {list(name2idx.keys())[label]}'
+                # plot_simple_images(multiple_characters, title=predictions_string)
+                word_imgs.extend(recognised_characters)
+                word_labels.extend(predicted_labels)
+                # all_segmented_characters.extend(recognised_characters)
+                # all_segmented_labels.extend(predicted_labels)
+                all_char_propabilities.append(probability)
+            else:  # single character
+                print("\nSingle character classification")
+                if character_segment.size != 0:
+                # try:
+                    character_segment = clean_image(character_segment)
+                    # plot_simple_images([character_segment])
+                # except:
+                #     plt.imshow(character_segment)
+                #     plt.title("get_component_clusters failed.")
+                #     plt.show()
+                #     exit()
 
-            predicted_label, probability = get_label_probability(character_segment, model)
-            predicted_letter = list(name2idx.keys())[predicted_label]
-            print(f'Predicted label:{predicted_letter} probabilty:{probability}')
-            # plot_simple_images([character_segment], title=f'{predicted_label + 1}:{predicted_letter}')
-            all_segmented_characters.append(character_segment)
-            all_segmented_labels.append(int(predicted_label))
-            all_char_propabilities.append(probability)
-        else:
-            characters_skipped += 1
+                    predicted_label, probability = get_label_probability(character_segment, model)
+                    predicted_letter = list(name2idx.keys())[predicted_label]
+                    print(f'Predicted label:{predicted_letter} probabilty:{probability}')
+                    # plot_simple_images([character_segment], title=f'{predicted_label + 1}:{predicted_letter}')
+                    word_imgs.append(character_segment)
+                    word_labels.append(predicted_label)
+                    # all_segmented_characters.append(character_segment)
+                    # all_segmented_labels.append(int(predicted_label))
+                    all_char_propabilities.append(probability)
+                else:
+                    characters_skipped += 1
+        line_imgs.append(word_imgs[::-1])
+        line_labels.append(word_labels[::-1])
+    all_segmented_characters.append(line_imgs[::-1])
+    all_segmented_labels.append(line_labels[::-1])
+
+for character in destructure_characters(all_segmented_characters):
+    plot_simple_images([character], title='hello')
+
+labels_for_file = copy.deepcopy(all_segmented_labels)
+
+
+# work with these for style classification, they are in one array
+all_segmented_labels = destructure_characters(all_segmented_labels)
+all_segmented_characters = destructure_characters(all_segmented_characters)
+
 all_segmented_labels = np.asarray(all_segmented_labels)
 all_char_propabilities = np.asarray(all_char_propabilities)
 
 print("*"*40)
 print("TOTAL CHARACTERS SKIPPED:", characters_skipped)
+print("*"*40)
+print("*"*40)
+print("TOTAL NUMBER OF CHARACTERS:", len(all_segmented_characters))
+print("*"*40)
 print("*"*40)
 print('Getting style classification for all chararcters:')
 #get style labels for each character in the image
