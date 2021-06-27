@@ -83,20 +83,21 @@ def get_hinge_pdf(img_label, imgs):
     vals = [i * 0 for i in range(300)]
     for images in imgs[img_label]: #for all Global characters  
             #removenoise + gaussian blur for better canny edge detection
-            retval,images = cv2.threshold(images.copy(), thresh=20, maxval=255,
-                                   type=cv2.THRESH_BINARY_INV)
+            # retval,images = cv2.threshold(images.copy(), thresh=100, maxval=255,
+            #                        type=cv2.THRESH_BINARY_INV)
             # print(';sup')
             # plt.imshow(images)
             # plt.show()
             img = cv2.GaussianBlur(images,(5,5),0)
             img,mask = noise_removal(images)
-            # plt.imshow(img)
-            # plt.show()
+
 
             # apply canny to detect the contours of the char
             corners_of_img = cv2.Canny(img, 0, 100)
             cont_img = np.asarray(corners_of_img)
-
+            # plt.show()
+            # plt.imshow(corners_of_img)
+            # plt.show()
             # get the coordinates of the contour pixels
             contours = np.where(cont_img == 255)
             list_of_cont_cords = list(zip(contours[0], contours[1]))
@@ -105,7 +106,7 @@ def get_hinge_pdf(img_label, imgs):
             # plot the sorted cords in order just to be sure everything went fine
             # sorted_coords_animation(sorted_cords)
 
-            hist = get_histogram(sorted_cords, 4, cont_img)
+            hist = get_histogram(sorted_cords, 3, cont_img)
             # put the angles vals in two lists (needed to get co-occurence)
             list_phi1 = []
             list_phi2 = []
@@ -138,9 +139,9 @@ def get_hinge_pdf(img_label, imgs):
                 feature_vector.append(hinge_features[j][x:])
                 x += 1
             feature_vector = [item for sublist in feature_vector for item in sublist]
-            
-            feature_vector = np.asarray(feature_vector)
-            vals = vals+feature_vector
+            if len(hist) > 25:
+                feature_vector = np.asarray(feature_vector)
+                vals = vals+feature_vector
     
     npvector = np.asarray(vals)
     massdist = [element / sum(vals) for element in npvector]
@@ -155,6 +156,10 @@ def get_char_vector(img, image_from_page=True):
     if image_from_page:
         img[img == 1] = 255
     else:
+        img[img == 1] = 255
+        # retval, img = cv2.threshold(img.copy(), thresh=100, maxval=255,
+        #                                type=cv2.THRESH_BINARY_INV)
+        img = cv2.GaussianBlur(img, (5, 5), 0)
         img, mask = noise_removal(img)
     # #img = cv2.GaussianBlur(img, (5, 5), 0)
     
@@ -169,7 +174,7 @@ def get_char_vector(img, image_from_page=True):
     # sorted_coords_animation(sorted_cords)
 
     #get histogram of phi's
-    hist = get_histogram(sorted_cords, 4, cont_img, show_points=False)
+    hist = get_histogram(sorted_cords, 3, cont_img, show_points=False)
 
     # put the angles vals in two lists (needed to get co-occurence)
     list_phi1 = []
@@ -202,6 +207,8 @@ def get_char_vector(img, image_from_page=True):
 
     feature_vector = [item for sublist in feature_vector for item in sublist]
     feature_vector = np.asarray(feature_vector)
-
-    #return pdf
-    return [element/sum(feature_vector) for element in feature_vector]
+    if len(hist) > 25:
+        #return pdf
+        return [element/sum(feature_vector) for element in feature_vector]
+    else:
+        return 0
