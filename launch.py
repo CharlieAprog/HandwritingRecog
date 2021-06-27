@@ -1,10 +1,10 @@
 from operator import mul
-import sys
+from pathlib import Path
 
 from matplotlib.pyplot import plot
 # sys.path.append('C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog')
 # sys.path.append('C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/Text_Segmentation/plotting.py')
-from Style_Classification.feature_detection import *
+from Style_Classification.Classify_Char_Style import *
 import numpy as np
 from Text_Segmentation.plotting import plot_simple_images
 import torch
@@ -137,6 +137,8 @@ dominant_style = get_dominant_style(style_vec,chi_squared_vec,n_neighbors)
 print(dominant_style)
 print(max(dominant_style))
 
+
+Path('results/').mkdir(parents=True, exist_ok=True) 
 
 #write dominant style in text file
 f = open(f'dominant_style.txt','w')
