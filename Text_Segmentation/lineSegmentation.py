@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from skimage.transform import hough_line, hough_line_peaks, probabilistic_hough_line
 from skimage.filters import threshold_otsu
+import scipy.signal as ss
 import imutils
 import os
 import csv
@@ -31,9 +32,9 @@ def get_image(img_path, hough_transform=True):
     if hough_transform:
         image = cv2.bitwise_not(image)
     assert len(image.shape) == 2, "Trying to read image while being in a wrong folder, or provided path is wrong."
-    plt.imshow(image, cmap="gray")
-    plt.title("Image right after reading")
-    plt.show()
+    # plt.imshow(image, cmap="gray")
+    # plt.title("Image right after reading")
+    # plt.show()
     return image
 
 
@@ -57,7 +58,7 @@ def calc_outlier(data, method="std"):
         outlier = q1 - 1.5 * iqr
     else:
         # method2: standard deviation
-        outlier = np.mean(data) - np.std(data)
+        outlier = np.mean(data) - 1.5*np.std(data)
     return outlier
 
 
@@ -70,20 +71,27 @@ def get_lines(new_image):
     as well as a number of auxiliary parameters.
     """
     # A) Obtain active pixels in each row (horizontal projection)
-    h_hist = [len(row.nonzero()[0]) for row in new_image]
+    # unicode(x.strip()) if x is not None else ''
+    h_hist = [len(row.nonzero()[0]) if len(row.nonzero()[0]) < 400 or (i > 20 and  i < len(new_image) - 20) else 0 for i, row in enumerate(new_image)]
+    print(h_hist)
+    h_hist = ss.savgol_filter(h_hist, 7, 3)
+
 
     # First line detection: find nearly all peaks for averaging purpose
     fp = findpeaks(lookahead=3)
     result = fp.fit(h_hist)
     peaks = result['df'][result['df']['peak'] == True]
     val_peaks = peaks.y.to_list()
-    fp.plot()
+    # fp.plot()
 
     # Identify histogram peaks
+
     thr_lines = {}  # thresholded lines; containing lines of interest and the horizontal projections thereof
     local_lines = []  # list of pixels in a peak's neighborhood from left to right
     c = 0  # counter variable
     thr_num = np.mean(val_peaks)
+
+   
     for idx, line_sum in enumerate(h_hist):
         if line_sum >= thr_num and h_hist[idx - 1] > thr_num and idx > 0:
             local_lines.append(line_sum)
@@ -103,8 +111,8 @@ def get_lines(new_image):
         height = len(line_projections)
         locations.append([y_loc_start, y_loc_start + height])  # starting and ending location of the section
 
-    # Post line detection: identify only true peaks and add them to the locations if they weren't included due to
-    # the threshold
+    # # Post line detection: identify only true peaks and add them to the locations if they weren't included due to
+    # # the threshold
     section_heights = [x[1] - x[0] for x in locations]
     avg_sh = np.mean(section_heights)
     buffer = int(avg_sh * 0.5)
@@ -122,15 +130,19 @@ def get_lines(new_image):
             locations_extended.append([peak - buffer, peak + buffer])
     locations_extended = sorted(locations_extended, key=lambda x: x[0])
 
-    # C) Combining sections that are too close together
-    # distances between consecutive sections (SEC_n+1_top - SEC_n_bottom)
+    # # C) Combining sections that are too close together
+    # # distances between consecutive sections (SEC_n+1_top - SEC_n_bottom)
+
+
     distances = [
         locations_extended[sec + 1][0] - locations_extended[sec][1]
         for sec in range(len(locations_extended) - 1)
     ]
-    min_distance = calc_outlier(distances) if calc_outlier(distances) > 18 else 18
+    # min_distance = calc_outlier(distances) if calc_outlier(distances) > 15 else 15
+    min_distance = 10
+
     # min_distance = 18
-    # # print(distances, '\n', min_distance)
+    print(distances, '\n', min_distance)
     #
     locations_extended_new = []
     idx = 0
@@ -156,6 +168,7 @@ def get_lines(new_image):
                 break
             idx2 += 1
         idx += idx2
+
 
     # D) Adding buffer, based on average height of the NEW (!) sections, to each section that is too small
     section_heights_new = [x[1] - x[0] for x in locations_extended_new]
@@ -188,7 +201,7 @@ def get_lines(new_image):
     ]
     if top_line[0] <= 0 or top_line[1] <= 0:
         top_line[0] = 0
-        top_line[1] = 1
+        top_line[1] = 6
     mid_lines.append(top_line)
 
     # TODO: This might not even be necessary at all
@@ -210,8 +223,8 @@ def get_lines(new_image):
         locations_final[-1][1] + int(avg_sh_final * 2)
     ]
     if bottom_line[0] >= new_image.shape[0] or bottom_line[1] >= new_image.shape[0]:
-        bottom_line[0] = new_image.shape[0]-1
-        bottom_line[1] = new_image.shape[0]
+        bottom_line[0] = new_image.shape[0]-6
+        bottom_line[1] = new_image.shape[0]-1
     mid2.append(bottom_line)
     return mid2, avg_sh_final, h_hist, thr_num
 
@@ -258,7 +271,7 @@ def line_segmentation(img_path, new_folder_path):
     dilated_image = copy.deepcopy(image)
     kernel = np.ones((2, 2), 'uint8')
     dilated_image = cv2.dilate(dilated_image, kernel, iterations=1)
-    plot_simple_images([image, dilated_image], title="Original vs Dilated image")
+    # plot_simple_images([image, dilated_image], title="Original vs Dilated image")
     if not os.path.exists(new_folder_path):
         print("Running line segmentation on new image...")
         os.makedirs(new_folder_path)
@@ -477,6 +490,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
         if idx == 2:
             asd = 0
         nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[-1]]
+
         road_blocks = get_road_block_regions(nmap)
         start_end_height = int(nmap.shape[0] / 2)
         agent_height.append(start_end_height)
@@ -584,16 +598,17 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
 
 # image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
 #                 "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
+# image_names = [ "herodian1.jpg"]
 # for image_name in image_names:
-# image_name = "herodian1.jpg"
-# dev_path = f"../data/cropped_labeled_images/{image_name}"  # development path
-# new_folder_path = f"../data/cropped_labeled_images/paths/{image_name[0:-4]}"
-# section_images = line_segmentation(dev_path, new_folder_path)
+# # image_name = "archaic2.jpg"
+#     dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
+#     new_folder_path = f"data/cropped_labeled_images/paths/{image_name[0:-4]}"
+#     section_images = line_segmentation(dev_path, new_folder_path)
 
-# for i in [16]:
+# for i in range(1,21):
 #     image_name = i
-#     dev_path = f"../data/image-data/binaryRenamed/{image_name}.jpg"  # development path
-#     new_folder_path = f"../data/image-data/binaryRenamed/paths/{str(image_name)}"
+#     dev_path = f"data/image-data/binaryRenamed/{image_name}.jpg"  # development path
+#     new_folder_path = f"data/image-data/binaryRenamed/paths/{str(image_name)}"
 #     section_images = line_segmentation(dev_path, new_folder_path)
 
 # def rotate_image(image):
