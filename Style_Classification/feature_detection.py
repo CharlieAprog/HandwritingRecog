@@ -1,7 +1,7 @@
 import math
 import cv2
 from skimage import feature
-from Style_Classification.hinge_utils import *
+from hinge_utils import *
 from Text_Segmentation.segmentation_to_recog import resize_pad
 # from segmentation_to_recog import resize_pad
 import matplotlib.pyplot as plt
@@ -219,7 +219,7 @@ def get_accuracy_alldata(dataset, archaic_imgs, hasmonean_imgs, herodian_imgs, d
     ignored = 0
     cor_arch, cor_hero, cor_has = 0, 0 , 0
     wrong_arch, wrong_has, wrong_hero = 0, 0, 0
-    
+
     for stylename, styledataset_test in dataset_test.items():
         for label, characterset in styledataset_test.items():
             for image in characterset:

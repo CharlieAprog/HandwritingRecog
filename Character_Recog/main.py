@@ -15,4 +15,4 @@ from data_investigation import *
 ####split all datasets into 80-20 train-test split####
 #train_test_split("data/Char_Recog/cropped-padded-img-data/","data/binarized_monkbrill_split_40x40")sa
 #dataset_split("C:/Users/Panos/Desktop/HandwritingRecognition/HandwritingRecog/data/Char_Recog/cropped-padded-img-data/")
-dataset_split('/home/jan/PycharmProjects/HandwritingRecog/data/Style_classification/Hasmonean/')
+dataset_split('data/characters_for_style_classification_balance_morph/Hasmonean')
