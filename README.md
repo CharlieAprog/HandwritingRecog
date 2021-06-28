@@ -35,13 +35,13 @@ In this repository, you will find :
     
 
 To run the pipeline:
-    1) unzip .zip file (or access clone git link)
-    2) cd to repository
-    3) in new virtual environment, do pip3 install -r requirements.txt
+    * 1) unzip .zip file (or access clone git link)
+    * 2) cd to repository
+    * 3) in new virtual environment, do pip3 install -r requirements.txt
     the packages/dependencies should be now installed.
     to run the pipeline:
     
-    3) run launch.py by giving the folder of the input images as parsing argument, e.g python launch.py /data/images/
+    4) run launch.py by giving the folder of the input images as parsing argument, e.g python launch.py /data/images/
     
 The pipeline will now be running. as output you will get:
     -a new results/ folder which will contain the .txt output files
