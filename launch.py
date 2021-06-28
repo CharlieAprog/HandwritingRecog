@@ -16,21 +16,6 @@ from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRe
 import glob
 import argparse
 
-from operator import mul
-from pathlib import Path
-
-from matplotlib.pyplot import plot
-from Style_Classification.Classify_Char_Style import *
-from Style_Classification.SVM_Style import get_style_SVM
-import numpy as np
-from Text_Segmentation.plotting import plot_simple_images
-import torch
-import os
-import copy
-from Text_Segmentation.lineSegmentation import line_segmentation
-from Text_Segmentation.wordSegmentation import word_segmentation, trim_360
-from Text_Segmentation.characterSegmentation import character_segmentation, remove_character_artifacts, slide_over_word, select_slides, clean_image, destructure_characters
-from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRecognizer
 
 # data/cropped_labeled_images/
 #parsing path for image folder
@@ -100,7 +85,7 @@ for img_name in test_images:
                             all_char_propabilities.extend(probabilities)
                         except:
                             continue
-                        
+
                     else:  # single character
                         # print("\nSingle character classification")
                         if character_segment.size != 0:

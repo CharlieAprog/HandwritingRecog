@@ -555,9 +555,7 @@ def line_segmentation(img_path, new_folder_path):
     image = rotate_image(get_image(img_path, hough_transform=True))
     width, height = image.shape[1], image.shape[0]
     image = get_binary(resize_pad(image, 2700, 3600, 255))
-    # print("resized img")
-    plt.imshow(image, cmap='gray')
-    plt.show()
+
     dilated_image = copy.deepcopy(image)
     kernel = np.ones((2, 2), 'uint8')
     dilated_image = cv2.dilate(dilated_image, kernel, iterations=1)
