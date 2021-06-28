@@ -7,6 +7,7 @@ import imutils
 import os
 import csv
 import glob
+import time
 import copy
 from findpeaks import findpeaks
 from Text_Segmentation.plotting import *
@@ -272,13 +273,12 @@ def line_segmentation(img_path, new_folder_path):
     # image = get_binary(cv2.resize(image, (3608, 2706)))
     width, height = image.shape[1], image.shape[0]
     ratio = int(3608/height) if int(3608/height) < int(2706/width) else int(2706/width)
+    ratio = ratio if ratio >=1 else 1
     
     image = get_binary(cv2.resize(image, (ratio*image.shape[1], ratio*image.shape[0])))
     dilated_image = copy.deepcopy(image)
     kernel = np.ones((1, 1), 'uint8')
     dilated_image = cv2.dilate(dilated_image, kernel, iterations=1)
-    plot_simple_images([image, dilated_image], "Original image vs dilated image")
-    # plot_simple_images([image, dilated_image], title="Original vs Dilated image")
     if not os.path.exists(new_folder_path):
         print("Running line segmentation on new image...")
         os.makedirs(new_folder_path)
@@ -390,6 +390,7 @@ def astar(array, start, goal, i):
 
     heappush(oheap, (fscore[start], start))
 
+    start_time = time.time()
     while oheap:
         current = heappop(oheap)[1]
         if current == goal:
@@ -428,6 +429,10 @@ def astar(array, start, goal, i):
                 fscore[neighbor] = tentative_g_score + \
                                    heuristic(neighbor, goal)
                 heappush(oheap, (fscore[neighbor], neighbor))
+        time_elapsed = time.time()
+        if time_elapsed - start_time > 20:
+            print("aStar could not find a path within time limit, using simple line.")
+            return []
     return []
 
 
@@ -591,7 +596,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
         # assert path.shape[0] != 0, "Path has shape (0,), algorithm failed to reach destination."
         if path.shape[0] == 0:
             print(f'Path could not be generated for line {i}')
-            path = [(nmap.shape[0]//2,i) for i in range(binary_image.shape[1])]
+            path = np.array([(nmap.shape[0]//2,i) for i in range(binary_image.shape[1])])
             continue
         path[:, 0] += offset_from_top
         path = [list(step) for step in path]

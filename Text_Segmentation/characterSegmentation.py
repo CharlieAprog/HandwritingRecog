@@ -143,12 +143,13 @@ def run_character_segment(words_in_lines):
         line_word_areas = []
         box_boundaries_lines = []
         for word_idx, word in enumerate(line):
-            box_images, areas, word, box_boundaries = character_segment(word, title="[OLD]") #have them here
-            words_in_lines[line_idx][word_idx] = word
-            line_word_images.append(box_images)
-            line_word_areas.append(areas)
-            box_boundaries_lines.append(box_boundaries)
-            count += len(box_boundaries_lines)
+            if word.size != 0:
+                box_images, areas, word, box_boundaries = character_segment(word, title="[OLD]") #have them here
+                words_in_lines[line_idx][word_idx] = word
+                line_word_images.append(box_images)
+                line_word_areas.append(areas)
+                box_boundaries_lines.append(box_boundaries)
+                count += len(box_boundaries_lines)
         segmented_word_box_images.append(line_word_images)
         segmented_word_box_areas.append(line_word_areas)
         all_box_boundaries.append(box_boundaries_lines)
@@ -314,18 +315,19 @@ def select_slides(sliding_characters, predicted_char_num, model, window_size, na
     chosen_characters = 2
 
     first = trim_360(sliding_characters[0])
-    first_label, _ = get_label_probability(first, model)
+    first_label, prob_first = get_label_probability(first, model)
     last = trim_360(sliding_characters[-1])
-    last_label, _ = get_label_probability(last, model)
+    last_label, prob_last = get_label_probability(last, model)
 
     recognised_characters = [first]
+    probabilities = [prob_first]
     labels = [first_label]
     print(window_size)
     prev_letter_start = 0
     start_idx = 0
     while chosen_characters < predicted_char_num:
         best_prob = 0
-        chosen_slide = 0
+        chosen_slide = []
         chosen_label = 0
         for idx, slide in enumerate(sliding_characters[start_idx:]):
             start = shift * idx
@@ -333,27 +335,31 @@ def select_slides(sliding_characters, predicted_char_num, model, window_size, na
             begin_limit = int(prev_letter_start + window_size * 0.75)
             end_limit = int(prev_letter_start + window_size * 0.75 + window_size + window_size * 0.6)
             # print(begin_limit, end_limit)
-            if start >= begin_limit and end <= end_limit:
-                trimmed_slide = trim_360(slide)
-                predicted_label, probability = get_label_probability(trimmed_slide, model)
+            if start >= begin_limit and end <= end_limit and slide.size != 0:
+                predicted_label, probability = get_label_probability(slide, model)
                 predicted_letter = list(name2idx.keys())[predicted_label]
                 print(f'Predicted label:{predicted_letter} probabilty:{probability}')
                 print(f"window: [{shift * idx}-{window_size + shift * idx}]")
                 if probability > best_prob:
                     best_prob = probability
-                    chosen_slide = trimmed_slide
+                    chosen_slide = slide
                     chosen_label = predicted_label
                     temp_idx = idx
         chosen_characters += 1
         print('letter chosen')
-        start_idx = temp_idx
-        recognised_characters.append(clean_image(chosen_slide))
+        
+        print(chosen_slide)
+        if len(chosen_slide) != 0:
+            recognised_characters.append(clean_image(chosen_slide))
+            probabilities.append(best_prob)
+            start_idx = temp_idx
         labels.append(chosen_label)
         prev_letter_start = 0
 
     recognised_characters.append(last)
+    probabilities.append(prob_last)
     labels.append(last_label)
-    return recognised_characters, labels
+    return recognised_characters, labels, probabilities
 
 def dilate_and_filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_box_img_list, eroded_box_boundaries,
                              eroded_img):
@@ -395,8 +401,8 @@ def character_segmentation(words_in_lines):
                                                                              segmented_word_box_images,
                                                                              all_box_boundaries,
                                                                              words_in_lines)
-    single_character_widths = [width for width in character_widths if width <= 120]
-    mean_character_width = np.mean(single_character_widths)
+    single_character_widths = [width for width in character_widths if width <= 150 and width >= 20]
+    mean_single_character_width = np.mean(single_character_widths)
 
     all_suspected = 0
     changed = 0
@@ -406,7 +412,7 @@ def character_segmentation(words_in_lines):
         for word in line:
             eroded_words = []
             for char_idx, character_segment in enumerate(word):
-                if character_segment.shape[1] > mean_character_width + np.std(single_character_widths):
+                if character_segment.shape[1] > mean_single_character_width + np.std(single_character_widths):
                     all_suspected += 1
                     # Run connected components to get number of labels, so merged clusters are identified beforehand
                     character_segment = character_segment.astype(np.uint8)
@@ -423,5 +429,5 @@ def character_segmentation(words_in_lines):
             eroded_lines.append(eroded_words)
         characters_eroded.append(eroded_lines)
     print(f'all:{all_suspected}, changed:{changed}')
-    return characters_eroded, single_character_widths, mean_character_width
+    return characters_eroded, single_character_widths, mean_single_character_width
 

@@ -50,11 +50,6 @@ def create_image(label, img_size):
 
     return img
 
-#Create a 50x50 image of the Alef token and save it to disk
-#To get the raw data cast it to a numpy array
-# img = create_image('Yod', (50, 50))
-# img.save('example_alef.png')
-
 
 def labeltotxt(labels,img_name):
     letters = {
@@ -88,18 +83,20 @@ def labeltotxt(labels,img_name):
     27:"\n"}
 
     f = open(f'results/{img_name}_characters.txt','a',encoding = 'utf-8')
-    string = []
-    for label in labels:
-        f.write(letters[label])
+    
+    for word in sentence:
+        for char in word:
+            f.write(letters[char])
+        f.write('\n')
+    f.close
+
         
-   
 def styletotext(style,img_name):
     f = open(f'results/{img_name}_style.txt','a',encoding = 'utf-8')
     f.write(style)
     f.close
 
 Path('results/').mkdir(parents=True, exist_ok=True) 
-
 
 labeltotxt([0,1,2,3,4,5,6,7,27,0,1,2,3,4,5,6,7],'fg001')
 styletotext('Hasmonean','Fg001')
