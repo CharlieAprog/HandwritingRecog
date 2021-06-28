@@ -56,6 +56,7 @@ def get_binary(img):
 
 
 def calc_outlier(data, method="std"):
+    '''method used to find outlier of list, either std or iqr used'''
     if method == "iqr":
         # method1: interquartile
         q3, q1 = np.percentile(data, [75, 25])
@@ -313,10 +314,14 @@ def rotate_image(image):
 # |-------------------------|
 
 def heuristic(a, b):
+    '''
+    heuristic for astar
+    '''
     return (b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2
 
 
 def astar(array, start, goal, i):
+    '''astart algorithm implelemtation'''
     # 8 directions: up, down, right, left, ....
     neighbors = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1),
                  (-1, -1)]
@@ -379,7 +384,7 @@ def horizontal_projections(sobel_image):
 
 
 def path_exists(window_image):
-    # very basic check first then proceed to A* check
+    '''checks whether astart algorithm can traverse area'''
     if 0 in horizontal_projections(window_image):
         return True
 
@@ -396,6 +401,7 @@ def path_exists(window_image):
 
 
 def get_road_block_regions(nmap):
+    '''locate areas that block path or astar algorithm'''
     road_blocks = []
     needtobreak = False
 
@@ -416,6 +422,7 @@ def get_road_block_regions(nmap):
 
 
 def group_the_road_blocks(road_blocks):
+    '''combine regions that cannot be traversed using astar, combined regions must be the same roadblock'''
     # group the road blocks
     road_blocks_cluster_groups = []
     road_blocks_cluster = []
@@ -432,6 +439,7 @@ def group_the_road_blocks(road_blocks):
 
 
 def find_paths(hpp_clusters, binary_image, avg_lh):
+    '''function that will plan a route for the astar algorithm, runs it and saves the paths to a file for later use'''
     fake_rb_indices = []
     agent_height = []
     stretch = int(avg_lh * 0.85)
@@ -542,14 +550,10 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
 
 
 def line_segmentation(img_path, new_folder_path):
+    '''start of the pipeline, loads the image, rotates it to make sure its straight, correct size and inversed
+    obtaines the probably lines of the scroll, and runs start through them, returnes the lines of the scroll '''
     image = rotate_image(get_image(img_path, hough_transform=True))
-    # image = get_binary(cv2.resize(image, (3608, 2706)))
     width, height = image.shape[1], image.shape[0]
-    # ratio = int(3608/height) if int(3608/height) < int(2706/width) else int(2706/width)
-    # ratio = ratio if ratio >=1 else 1
-    
-    # image = get_binary(cv2.resize(image, (ratio*image.shape[1], ratio*image.shape[0])))
-
     image = get_binary(resize_pad(image, 2700, 3600, 255))
     # print("resized img")
     plt.imshow(image, cmap='gray')

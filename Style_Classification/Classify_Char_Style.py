@@ -16,6 +16,11 @@ from Style_Classification.Calculate_Hinge_Features import *
 PI = 3.14159265359
 
 
+'''
+Main function to classify a given list of character images and their labels.
+All needed codebook vectors are calculated and character images are classfied based
+on Chi-Squared distance.
+'''
 def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.0,global_vec = False, show_hinge_points=False):
     # main pipeline function to get char style for a given vector
     style_char_vec = []

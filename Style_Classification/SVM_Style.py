@@ -13,7 +13,7 @@ import pickle
 import torchvision.transforms as transforms
 
 def get_hog(set):
-    ##get histogram of oriented gradients for a data split set
+    #get histogram of oriented gradients for a data split set
     set = [hog(image, orientations=8, pixels_per_cell=(4, 4),
                cells_per_block=(1, 1)) for image in set]
     return set
@@ -26,6 +26,9 @@ class ThresholdTransform(object):
   def __call__(self, x):
     return (x < self.thr).to(x.dtype)  # do not change the data type
 
+'''
+Fits the SVM to the training data, calculates accuracy on testing data and saves the trained SVM
+'''
 def get_acc_SVM(dataset_train, dataset_test):
     print("Running SVM for Style")
     name2idxStyle = {'archaic': 0, 'hasmonean': 1, 'herodian': 2}
@@ -73,6 +76,11 @@ def get_acc_SVM(dataset_train, dataset_test):
     filename = '../SVM_for_Style.sav'
     pickle.dump(clf, open(filename, 'wb'))
 
+
+'''
+Runs the SVM for each character that is nicely segmented (high probability from the recognizer)
+Returns the style of that image based on simple majority voting
+'''
 def get_style_SVM(characters, labels,probabilities,prob_threshold = 0.8):
     # load the model from disk
     filename = 'SVM_for_Style.sav'

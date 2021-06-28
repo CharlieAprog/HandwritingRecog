@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 import cv2
 from Style_Classification.Classify_Char_Style import *
 
+
+'''
+Helper function to remove noise/artefacts from an Image
+'''
 def noise_removal(img,morphology=False):
     #remove unneeded noise from image
     img = cv2.bitwise_not(img)
@@ -32,7 +36,10 @@ def noise_removal(img,morphology=False):
         newimg = cv2.morphologyEx(newimg, cv2.MORPH_CLOSE, kernel)
     return newimg,mask
 
-# finds closest cord based on Manhatten distance with an added prio to the x-direction
+'''
+Finds the clostest coordinate in a List based on Manhatten distance.
+Has a priority for finding coords in the y-direction.
+'''
 def find_closest_cord(current_cord, contour_cords):
 
     min_dist = 5000
@@ -69,11 +76,14 @@ def find_closest_cord(current_cord, contour_cords):
 
     return closest_cord, min_dist
 
-# LOGIC
-# start at one cord then always find the closest in x,y while prioritizing one direction
-# (so if x_next - x == y_next - y always choose either x or y)
-# and add that to the new list, when we add to new list remove from old
-# so we cannot go back // stop when list of contour cords is empty
+'''
+Sorts the coordinates of a given contour, so that hinge points can be found.
+LOGIC
+start at one cord then always find the closest in x,y while prioritizing one direction
+(so if x_next - x == y_next - y always choose either x or y)
+and add that to the new list, when we add to new list remove from old
+so we cannot go back // stop when list of contour cords is empty
+'''
 def sort_cords(contour_cords):
     sorted_list = []
     connected_contour = []
@@ -119,16 +129,10 @@ def get_chisquared(feature_vector,style_pdf):
         
     return chi/2
     
-
-# remove all occurences where phi2 < phi1
-def remove_redundant_angles(hist):
-    for instance in hist:
-
-        if instance[0] <= instance[1]:
-            hist.remove(instance)
-
-    return hist
-
+'''
+Helper function to plot sorted coordinates in order,
+creates a little animation.
+''' 
 def sorted_coords_animation(sorted_cords, hinge_coords=None):
     dummy_img = np.zeros([40, 40])
 

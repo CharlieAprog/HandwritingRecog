@@ -26,8 +26,12 @@ def get_angle(x_origin, y_origin, x_up, y_up):
         output = 180 + (180 + output)
 
     return output
-
-
+'''
+Given a list of sorted contours and an wanted distance between hinge points, this function calculates
+co-occurences of angles needed for the hinge feature these are returned as a list of tuples.
+For a detailed explanation see 
+https://www.ai.rug.nl/~mbulacu/tpami2007-bulacu-schomaker.pdf
+'''
 def get_histogram(list_of_contours, dist_between_points, img, show_points=False):
     # get histogram of co-occurences
     histogram = []
@@ -86,6 +90,10 @@ def get_histogram(list_of_contours, dist_between_points, img, show_points=False)
 
     return histogram
 
+'''
+This function calculates a codebook vector for a given character label and style.
+Can also calculate the global codebook vector of a given style
+'''
 def get_hinge_pdf(img_label, imgs):
     vals = [i * 0 for i in range(300)]
     for images in imgs[img_label]: #for all Global characters  
@@ -150,7 +158,9 @@ def get_hinge_pdf(img_label, imgs):
 
     return massdist
 
-# This function return the hinge vector (f2) for one specific image
+'''
+This calculates the hinge feature vector for a single image/character
+'''
 def get_char_vector(img, image_from_page=True):
 
     img = np.uint8(img)

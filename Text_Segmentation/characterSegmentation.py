@@ -10,6 +10,9 @@ from typing import List
 
 
 def slide_over_word(word, window_size, shift):
+    '''function that takes an image of a word and then slides a window of a given size over and obtaines snapshots
+    the window is shifted by the value shift until it reaches the end of the word
+    returns these images'''
     images = []
     height, width = word.shape
     for snap in range(0, width - window_size, shift):
@@ -18,18 +21,9 @@ def slide_over_word(word, window_size, shift):
     images.append(word[:, word.shape[1] - window_size: word.shape[1]])
     return images
 
-def clean_image(image, thresh_side = 500, thresh_mid=20, trim_thresh=4, skip_left_pruning= False, skip_right_pruning = False ):
-    # image = get_binary(image)
-    image = image.astype(np.uint8)
-    new = remove_character_artifacts(image, skip_left_pruning=skip_left_pruning, skip_right_pruning= skip_right_pruning, internal_min_cluster=thresh_mid)
-    new = trim_360(new, section_thresh=trim_thresh)
-    if new.size == 0:
-        new = image
-    return new
-
-
-
 def get_sliding_words(words_in_lines, window_size, shift):
+    '''takes a list containing the images of all word in the lines of an scroll
+    calls sliding words on these words and returns an array in the same structure'''
     sliding_words_in_line = []
     for line in words_in_lines:
         sliding_words = []
@@ -38,8 +32,20 @@ def get_sliding_words(words_in_lines, window_size, shift):
         sliding_words_in_line.append(sliding_words)
     return sliding_words_in_line
 
+def clean_image(image, thresh_side = 500, thresh_mid=20, trim_thresh=4, skip_left_pruning= False, skip_right_pruning = False ):
+    '''function to remove artifacts, removes small artifacts contained in an image under a certain pixel count, larger ones that touch
+    the border of the image in question. finally the borders of the image are removed'''
+    # image = get_bina'''ry(image)
+    image = image.astype(np.uint8)
+    new = remove_character_artifacts(image, skip_left_pruning=skip_left_pruning, skip_right_pruning= skip_right_pruning, internal_min_cluster=thresh_mid)
+    new = trim_360(new, section_thresh=trim_thresh)
+    if new.size == 0:
+        new = image
+    return new
 
 def get_component_clusters(num_labels, labels):
+    '''function that takes a list of pixel locations (tuple of x, y locations) that indicate a connected component
+    returns a numpy array representing an image of the connected component'''
     clusters = [[] for _ in range(num_labels)]
     for row_idx, row in enumerate(labels):
         for col_idx, col in enumerate(row):
@@ -49,6 +55,7 @@ def get_component_clusters(num_labels, labels):
 
 
 def get_bounding_box_boundaries(image, clusters) -> List[List[list]]:
+    '''places a bounding box around a connected component so it can be turned into a numpy array'''
     box_boundaries = []
     for idx, cluster in enumerate(clusters):
         # initialize starting values
@@ -71,7 +78,9 @@ def get_bounding_box_boundaries(image, clusters) -> List[List[list]]:
     return box_boundaries
 
 
-def dialate_clusters(word, kernel=(5, 3)):
+def dilate_clusters(word, kernel=(5, 3)):
+    '''function that dilates a word with the given kernel, returns the bounding boxes of the connected components after
+    dilation'''
     kernel = np.ones(kernel, np.uint8)
     word = cv2.dilate(word, kernel, iterations=1)
     num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
@@ -100,6 +109,8 @@ def get_box_images(box_boundaries, word):
 
 
 def erode_clusters(word, kernel, iter_num=1):
+    '''Erodes a words determined by the kernel and the iter num. Orderes the resulting bounding boxes of the 
+    resulting connected componentents and returns them'''
     kernel = np.ones(kernel, np.uint8)
     word = cv2.erode(word, kernel, iterations=iter_num)
     num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
@@ -111,6 +122,9 @@ def erode_clusters(word, kernel, iter_num=1):
 
 
 def character_segment(word, title=None):
+    '''takes a word and takes the connected components in that word
+    if the word has many artifacts resulting in a high number of connecting components
+    dilate until their amount reaches a threshold'''
     cluster_threshold = 7
     word = word.astype(np.uint8)
     num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
@@ -120,7 +134,7 @@ def character_segment(word, title=None):
     box_boundaries = sorted(box_boundaries, key=lambda x: x[1][1])
     num_boxes = len(box_boundaries)
     while num_boxes > cluster_threshold:
-        box_boundaries, word = dialate_clusters(word)
+        box_boundaries, word = dilate_clusters(word)
         num_boxes = len(box_boundaries)
         # print(num_boxes)
     # erosion, character segment, dialate clusters
@@ -133,6 +147,8 @@ def character_segment(word, title=None):
 
 
 def run_character_segment(words_in_lines):
+    '''runs character segment pipelin on a list of words in each line of a scroll
+    returns the images of each character in each word in each line of a scroll'''
     segmented_word_box_images = []
     segmented_word_box_areas = []
     all_box_boundaries = []
@@ -153,11 +169,12 @@ def run_character_segment(words_in_lines):
         segmented_word_box_areas.append(line_word_areas)
         all_box_boundaries.append(box_boundaries_lines)
     print('run character segment:',count)
-
     return segmented_word_box_images, segmented_word_box_areas, all_box_boundaries
 
 
 def is_boundary_included(all_boundries, cluster):
+    '''checks if the max and min of a bounding box of a cluster is contained within a bounding box of another character
+    this would means that the cluster is obsolete and can be added to the cluster that it is contained in'''
     x_min_input = cluster[1][0]
     x_max_input = cluster[1][1]
     for idx, boundries in enumerate(all_boundries):
@@ -169,6 +186,7 @@ def is_boundary_included(all_boundries, cluster):
 
 
 def is_image_border_active(character):
+    '''checks whether the left or right most column of a character image contain 1s'''
     left_border = character[:, 0]
     right_border = character[:, -1]
     if len(np.nonzero(left_border)[0]) > 0 or len(np.nonzero(right_border)[0]) > 0:
@@ -177,7 +195,7 @@ def is_image_border_active(character):
 
 
 def get_character_area_outlier(segmented_word_box_areas):
-
+    '''function to determine whether a character is an outlier or not'''
     # Empirically observed values
     min_area = 500
     max_area = 8000  # anything above 8000 is undoubtedly more than 1 character in any test image
@@ -196,7 +214,7 @@ def get_character_area_outlier(segmented_word_box_areas):
 
 def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_box_boundaries, words_in_lines):
     """
-    Returns those images that are supposedly not artifacts.
+    Returns those images that are supposedly not artifacts of whole set of words in lines. 
     """
 
     outlier_thr = get_character_area_outlier(segmented_word_box_areas)
@@ -241,7 +259,6 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
         if line_list != []:
             filtered_word_box_images.append(line_list)
     # print('filter characters',len(filtered_word_box_images))
-
     char_num = 0
     for line in filtered_word_box_images:
         for word in line:
@@ -258,6 +275,7 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
 
 def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False,
                                internal_min_cluster=30):
+    '''function that will locate and remove artifacts of an image'''
     img_copy = copy.deepcopy(image)
     num_labels, labels = cv2.connectedComponents(img_copy, connectivity=4)
     clusters = get_component_clusters(num_labels, labels)
@@ -293,6 +311,7 @@ def remove_character_artifacts(image, skip_left_pruning=False, skip_right_prunin
 
 
 def destructure_characters(characters_in_line):
+    '''takes a list ordered lsit of lines of words of characters to a single list'''
     characters = []
     for line in characters_in_line:
         for word in line:
@@ -302,6 +321,10 @@ def destructure_characters(characters_in_line):
 
 
 def select_slides(sliding_characters, predicted_char_num, model, window_size, name2idx):
+    '''
+    given a set of slides obtained by sliding over a word, determine which slides are most likely to be an actual character
+    or not using the trained model
+    '''
     shift = 1
     chosen_characters = 2
 
@@ -351,6 +374,10 @@ def select_slides(sliding_characters, predicted_char_num, model, window_size, na
 
 def dilate_and_filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_box_img_list, eroded_box_boundaries,
                              eroded_img):
+    '''
+    erode characters suspected to contain multiple characters to attempt to split them up
+    filter them and return the newly seperated characters
+    '''
     outlier_thr = get_character_area_outlier(segmented_word_box_areas)
     # plot_simple_images([eroded_img], title= 'before')
     filtered_images = []
@@ -383,6 +410,10 @@ def dilate_and_filter_eroded_characters(segmented_word_box_areas, eroded_box_are
 
 
 def character_segmentation(words_in_lines):
+    '''
+    entire pipleline for character segmentation, takes words in all lines obtained from the scroll and
+    returns list of charcters in words in lines 
+    '''
     # Get all characters from all words
     segmented_word_box_images, segmented_word_box_areas, all_box_boundaries = run_character_segment(words_in_lines)
     filtered_word_box_images_all_lines, character_widths = filter_characters(segmented_word_box_areas,

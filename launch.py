@@ -38,6 +38,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('path', help= 'path to folder with image files')
 args = parser.parse_args()
 
+#get input path of folder and separate img names w/ glob
 test_folder = args.path
 test_images= glob.glob(test_folder+"/*")
 test_images = [os.path.basename(image_name) for image_name in test_images]
@@ -99,6 +100,7 @@ for img_name in test_images:
                             all_char_propabilities.extend(probabilities)
                         except:
                             continue
+                        
                     else:  # single character
                         # print("\nSingle character classification")
                         if character_segment.size != 0:
