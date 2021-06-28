@@ -95,17 +95,18 @@ def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.5,glo
 
                 # get feature vector of given char and get chisquared for each pdf
                 feature_vector = get_char_vector(image)
-                chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[27]])
-                chi_herodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[27]])
-                chi_archaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[27]])
-                minchi = min(chi_hasmonean, chi_herodian, chi_archaic)
+                if feature_vector != 0:
+                    chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[27]])
+                    chi_herodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[27]])
+                    chi_archaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[27]])
+                    minchi = min(chi_hasmonean, chi_herodian, chi_archaic)
 
-                if minchi == chi_hasmonean: predicted = 'Hasmonean'
-                if minchi == chi_herodian: predicted = 'Herodian'
-                if minchi == chi_archaic: predicted = 'Archaic'
+                    if minchi == chi_hasmonean: predicted = 'Hasmonean'
+                    if minchi == chi_herodian: predicted = 'Herodian'
+                    if minchi == chi_archaic: predicted = 'Archaic'
 
-                style_char_vec.append(predicted)
-                chi_squared_vec.append(minchi)
+                    style_char_vec.append(predicted)
+                    chi_squared_vec.append(minchi)
 
             else: 
                 # get hinge pdfs
@@ -118,18 +119,18 @@ def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.5,glo
 
                 # calculate vector for char and chisquared distance
                 feature_vector = get_char_vector(image)
+                if feature_vector != 0:
+                    chi_archaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[label]])
+                    chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[label]])
+                    chi_herodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[label]])
 
-                chi_archaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[label]])
-                chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[label]])
-                chi_herodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[label]])
-
-                # smallest chi squared is the style of char
-                minchi = min(chi_hasmonean, chi_herodian, chi_archaic)
-                if minchi == chi_archaic: predicted = 'Archaic'
-                if minchi == chi_hasmonean: predicted = 'Hasmonean'
-                if minchi == chi_herodian: predicted = 'Herodian'
-                style_char_vec.append(predicted)
-                chi_squared_vec.append(minchi)
+                    # smallest chi squared is the style of char
+                    minchi = min(chi_hasmonean, chi_herodian, chi_archaic)
+                    if minchi == chi_archaic: predicted = 'Archaic'
+                    if minchi == chi_hasmonean: predicted = 'Hasmonean'
+                    if minchi == chi_herodian: predicted = 'Herodian'
+                    style_char_vec.append(predicted)
+                    chi_squared_vec.append(minchi)
 
     else:#Get global vecs
         print('getting Pdfs')

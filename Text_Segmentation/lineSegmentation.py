@@ -9,6 +9,10 @@ import csv
 import glob
 import time
 import copy
+import numpy as np
+from heapq import *
+from tqdm import tqdm
+from Text_Segmentation.segmentation_to_recog import resize_pad
 from findpeaks import findpeaks
 from Text_Segmentation.plotting import *
 
@@ -63,7 +67,6 @@ def calc_outlier(data, method="std"):
     return outlier
 
 
-@timer
 def get_lines(new_image):
     """
     A function that takes a binary image and searches for lines.
@@ -75,7 +78,7 @@ def get_lines(new_image):
     # unicode(x.strip()) if x is not None else ''
     h_hist = [0 if len(row.nonzero()[0]) > 500 and (i < 20 and  i > len(new_image) - 20) else len(row.nonzero()[0]) for i, row in enumerate(new_image)]
 
-    print(h_hist)
+    # print(h_hist)
     h_hist = ss.savgol_filter(h_hist, 7, 3)
 
 
@@ -141,11 +144,8 @@ def get_lines(new_image):
         for sec in range(len(locations_extended) - 1)
     ]
     min_distance = calc_outlier(distances) if calc_outlier(distances) > 15 else 15
-    # min_distance = 10
+    # print(distances, '\n', min_distance)
 
-    # min_distance = 18
-    print(distances, '\n', min_distance)
-    #
     locations_extended_new = []
     idx = 0
     while idx < len(locations_extended):  # Run combination algorithm from top to bottom
@@ -268,64 +268,6 @@ def load_path(file_name):
     return np.loadtxt(file_name, delimiter=',', dtype=int)
 
 
-def line_segmentation(img_path, new_folder_path):
-    image = rotate_image(get_image(img_path, hough_transform=True))
-    # image = get_binary(cv2.resize(image, (3608, 2706)))
-    width, height = image.shape[1], image.shape[0]
-    ratio = int(3608/height) if int(3608/height) < int(2706/width) else int(2706/width)
-    ratio = ratio if ratio >=1 else 1
-    
-    image = get_binary(cv2.resize(image, (ratio*image.shape[1], ratio*image.shape[0])))
-    dilated_image = copy.deepcopy(image)
-    kernel = np.ones((1, 1), 'uint8')
-    dilated_image = cv2.dilate(dilated_image, kernel, iterations=1)
-    if not os.path.exists(new_folder_path):
-        print("Running line segmentation on new image...")
-        os.makedirs(new_folder_path)
-        # run image-processing
-        # mid_lines, hist = get_lines(dilated_image)
-        mid_lines, avg_lh, hist, thr_num = get_lines(dilated_image)
-        plot_hist(hist,
-                  thr_num,
-                  save=True,
-                  folder_path=new_folder_path,
-                  overwrite_path=False)
-        plot_hist_lines_on_image(dilated_image,
-                                 mid_lines,
-                                 save=True,
-                                 folder_path=new_folder_path,
-                                 overwrite_path=False)
-        # Find paths with A*
-        paths = find_paths(mid_lines, dilated_image, avg_lh)
-        plot_paths_next_to_image(dilated_image,
-                                 paths,
-                                 save=True,
-                                 folder_path=new_folder_path,
-                                 overwrite_path=False)
-        # save paths
-        for idx, path in enumerate(paths):
-            save_path(path, f"{new_folder_path}/path_{idx}.csv")
-        paths = [np.array(path) for path in paths]
-    else:
-        # load paths
-        file_paths_list = sorted(glob.glob(f'{new_folder_path}/*.csv'),
-                                 key=get_key)
-        paths = []  # a* paths
-        for file_path in file_paths_list:
-            line_path = load_path(file_path)
-            paths.append(line_path)
-        assert len(paths) > 0, "Trying to load paths from an empty folder, delete folder and run A* again."
-
-    section_images = []
-    line_count = len(paths)
-    for line_index in range(line_count -
-                            1):  # |-------- extract sections from loaded paths
-        section_image = extract_char_section_from_image(dilated_image, paths[line_index],
-                                                        paths[line_index + 1])
-        section_images.append(section_image)
-    return section_images
-
-
 def rotate_image(image):
     """
     A function that takes a binary image and rotates it until the lines found by Hough-Transform become
@@ -369,10 +311,6 @@ def rotate_image(image):
 # |-------------------------|
 # |          A*             |
 # |-------------------------|
-import numpy as np
-from heapq import *
-from tqdm import tqdm
-
 
 def heuristic(a, b):
     return (b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2
@@ -404,8 +342,8 @@ def astar(array, start, goal, i):
         for i, j in neighbors:
             neighbor = current[0] + i, current[1] + j
             tentative_g_score = gscore[current] + heuristic(current, neighbor)
-            if i == 11:
-                print(current)
+            # if i == 11:
+                # print(current)
             if 0 <= neighbor[0] < array.shape[0]:
                 if 0 <= neighbor[1] < array.shape[1]:
                     if array[neighbor[0]][neighbor[1]] == 1:
@@ -422,8 +360,8 @@ def astar(array, start, goal, i):
             if tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [
                 i[1] for i in oheap
             ]:
-                if i == 11:
-                    print(current)
+                # if i == 11:
+                    # print(current)
                 came_from[neighbor] = current
                 gscore[neighbor] = tentative_g_score
                 fscore[neighbor] = tentative_g_score + \
@@ -431,7 +369,7 @@ def astar(array, start, goal, i):
                 heappush(oheap, (fscore[neighbor], neighbor))
         time_elapsed = time.time()
         if time_elapsed - start_time > 20:
-            print("aStar could not find a path within time limit, using simple line.")
+            # print("aStar could not find a path within time limit, using simple line.")
             return []
     return []
 
@@ -498,7 +436,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
     agent_height = []
     stretch = int(avg_lh * 0.85)
     for idx, cluster_of_interest in enumerate(hpp_clusters):
-        print(idx)
+        # print(idx)
         if idx == 2:
             asd = 0
         nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[-1]]
@@ -512,7 +450,6 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
             nmap_rb = binary_image[cluster_of_interest[0] - stretch//2:cluster_of_interest[-1]+stretch//2]
             road_blocks_new = get_road_block_regions(nmap_rb)
             if road_blocks_new != road_blocks and len(road_blocks_new) < len(road_blocks):
-                print('Fake roadblock has been hit, better path found')
                 fake_rb_indices.append(idx)
                 road_blocks = road_blocks_new
         road_blocks_cluster_groups = group_the_road_blocks(road_blocks)
@@ -540,7 +477,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
             while True:
                 if np.sum(binary_image[cluster_of_interest[0]:cluster_of_interest[-1], :][:,
                     road_blocks[0]: binary_image.shape[1] - 1][mid, :]) == 0:
-                    print("Cut omitted, path is free.")
+                    # print("Cut omitted, path is free.")
                     break
                 i += 1
                 # If roadblock end found (black pixel)
@@ -564,10 +501,8 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
                                     mid, i:i + fake_end_length])[0]) != 0:
                             rb_end_reached = False
                             prev_pixel = 0
-                            print("fake end")
                             continue
                         # true end
-                        print(f"Cuts have been made for line {idx}, roadblock {road_blocks}")
                         break
                     prev_pixel = 0
                 else:
@@ -592,10 +527,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
             height = agent_height[i]
         path = np.array(
             astar(nmap, (height, 0), (height, nmap.shape[1] - 1), i))
-        print("path.shape:", path.shape)
-        # assert path.shape[0] != 0, "Path has shape (0,), algorithm failed to reach destination."
         if path.shape[0] == 0:
-            print(f'Path could not be generated for line {i}')
             path = np.array([(nmap.shape[0]//2,i) for i in range(binary_image.shape[1])])
             continue
         path[:, 0] += offset_from_top
@@ -609,81 +541,64 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
     return paths
 
 
-# |-------------------------|
-# |          A*             |
-# |-------------------------|
+def line_segmentation(img_path, new_folder_path):
+    image = rotate_image(get_image(img_path, hough_transform=True))
+    # image = get_binary(cv2.resize(image, (3608, 2706)))
+    width, height = image.shape[1], image.shape[0]
+    # ratio = int(3608/height) if int(3608/height) < int(2706/width) else int(2706/width)
+    # ratio = ratio if ratio >=1 else 1
+    
+    # image = get_binary(cv2.resize(image, (ratio*image.shape[1], ratio*image.shape[0])))
 
-# image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
-#                 "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
-# image_names = [ "herodian1.jpg"]
-# for image_name in image_names:
-# # image_name = "archaic2.jpg"
-#     dev_path = f"data/cropped_labeled_images/{image_name}"  # development path
-#     new_folder_path = f"data/cropped_labeled_images/paths/{image_name[0:-4]}"
-#     section_images = line_segmentation(dev_path, new_folder_path)
+    image = get_binary(resize_pad(image, 2700, 3600, 255))
+    # print("resized img")
+    plt.imshow(image, cmap='gray')
+    plt.show()
+    dilated_image = copy.deepcopy(image)
+    kernel = np.ones((2, 2), 'uint8')
+    dilated_image = cv2.dilate(dilated_image, kernel, iterations=1)
+    if not os.path.exists(new_folder_path):
+        os.makedirs(new_folder_path)
+        # run image-processing
+        # mid_lines, hist = get_lines(dilated_image)
+        mid_lines, avg_lh, hist, thr_num = get_lines(dilated_image)
+        plot_hist(hist,
+                  thr_num,
+                  save=True,
+                  folder_path=new_folder_path,
+                  overwrite_path=False)
+        plot_hist_lines_on_image(dilated_image,
+                                 mid_lines,
+                                 save=True,
+                                 folder_path=new_folder_path,
+                                 overwrite_path=False)
+        # Find paths with A*
+        print("Running A* path-plannig")
+        paths = find_paths(mid_lines, dilated_image, avg_lh)
+        plot_paths_next_to_image(dilated_image,
+                                 paths,
+                                 save=True,
+                                 folder_path=new_folder_path,
+                                 overwrite_path=False)
+        # save paths
+        for idx, path in enumerate(paths):
+            save_path(path, f"{new_folder_path}/path_{idx}.csv")
+        paths = [np.array(path) for path in paths]
+    else:
+        # load paths
+        file_paths_list = sorted(glob.glob(f'{new_folder_path}/*.csv'),
+                                 key=get_key)
+        paths = []  # a* paths
+        for file_path in file_paths_list:
+            line_path = load_path(file_path)
+            paths.append(line_path)
+        assert len(paths) > 0, "Trying to load paths from an empty folder, delete folder and run A* again."
 
-# for i in range(1,21):
-#     image_name = i
-#     dev_path = f"data/image-data/binaryRenamed/{image_name}.jpg"  # development path
-#     new_folder_path = f"data/image-data/binaryRenamed/paths/{str(image_name)}"
-#     section_images = line_segmentation(dev_path, new_folder_path)
-
-# def rotate_image(image):
-#     # tested_angles = np.linspace(np.pi* 49/100, np.pi *51/100, 100)
-#     tested_angles = np.linspace(-np.pi * 45 / 100, -np.pi * 55 / 100, 100)
-#     hspace, theta, dist, = hough_line(image, tested_angles)
-#
-#     h, q, d = hough_line_peaks(hspace, theta, dist)
-#
-#     #################################################################
-#     # Example code from skimage documentation to plot the detected lines
-#     angle_list = []  # Create an empty list to capture all angles
-#     dist_list = []
-#     # Generating figure 1
-#     fig, axes = plt.subplots(1, 4, figsize=(15, 6))
-#     ax = axes.ravel()
-#     ax[0].imshow(image, cmap='gray')
-#     ax[0].set_title('Input image')
-#     ax[0].set_axis_off()
-#     ax[1].imshow(np.log(1 + hspace),
-#                  extent=[np.rad2deg(theta[-1]), np.rad2deg(theta[0]), dist[-1], dist[0]],
-#                  cmap='gray', aspect=1 / 1.5)
-#     ax[1].set_title('Hough transform')
-#     ax[1].set_xlabel('Angles (degrees)')
-#     ax[1].set_ylabel('Distance (pixels)')
-#     ax[1].axis('image')
-#     ax[2].imshow(image, cmap='gray')
-#     origin = np.array((0, image.shape[1]))
-#
-#     for _, angle, dist in zip(*hough_line_peaks(hspace, theta, dist, min_distance=50, threshold=0.76 * np.max(hspace))):
-#         angle_list.append(angle)  # Not for plotting but later calculation of angles
-#         dist_list.append(dist)
-#         y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
-#         ax[2].plot(origin, (y0, y1), '-r')
-#
-#     ave_angle = np.mean(angle_list)
-#     ave = ave_angle * 180 / np.pi
-#     ave_dist = np.mean(dist_list)
-#     x0, x1 = (ave_dist - origin * np.cos(ave_angle)) / np.sin(ave_angle)
-#
-#     ax[2].plot(origin, (x0, x1), '-b')
-#     ax[2].set_xlim(origin)
-#     ax[2].set_ylim((image.shape[0], 0))
-#     ax[2].set_axis_off()
-#     ax[2].set_title('Detected lines')
-#
-#     ###############################################################
-#     # Convert angles from radians to degrees (1 rad = 180/pi degrees)
-#     angles = [a * 180 / np.pi for a in angle_list]
-#     change = 90 - -1 * np.mean(angles)
-#     newImage = imutils.rotate_bound(image, -change)
-#     ax[3].imshow(newImage, cmap='gray')
-#     plt.tight_layout()
-#     plt.show()
-#
-#     # plotHoughTransform(hspace, theta, dist, x0, x1, origin, newImage)
-#
-#     # Compute difference between the two lines
-#     angle_difference = np.max(angles) - np.min(angles)
-#
-#     return newImage
+    section_images = []
+    line_count = len(paths)
+    for line_index in range(line_count -
+                            1):  # |-------- extract sections from loaded paths
+        section_image = extract_char_section_from_image(dilated_image, paths[line_index],
+                                                        paths[line_index + 1])
+        section_images.append(section_image)
+    return section_images

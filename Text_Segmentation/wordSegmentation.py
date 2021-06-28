@@ -47,7 +47,6 @@ def trim_section(section, section_threshold=10):
     return new_section.astype(np.uint8)
 
 
-@timer
 def segment_words(section, vertical_projection):
     whitespace_lengths = []
     whitespace = 0
@@ -63,9 +62,9 @@ def segment_words(section, vertical_projection):
             whitespace = 0  # reset whitespace counter.
         if idx == len(vertical_projection) - 1:
             whitespace_lengths.append(whitespace)
-    print("whitespaces:", whitespace_lengths)
+    # print("whitespaces:", whitespace_lengths)
     avg_white_space_length = np.mean(whitespace_lengths)
-    print("average whitespace lenght:", avg_white_space_length)
+    # print("average whitespace lenght:", avg_white_space_length)
 
     # B) Find words with whitespaces which are actually long spaces (word breaks) using the avg_white_space_length
     whitespace_length = 0

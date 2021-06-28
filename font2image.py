@@ -51,7 +51,7 @@ def create_image(label, img_size):
     return img
 
 
-def labeltotxt(labels,img_name):
+def labeltotext(labels,img_name):
     letters = {
     0:"א",
     1:"ע",
@@ -80,24 +80,20 @@ def labeltotxt(labels,img_name):
     24:"ו",
     25:"י",
     26:"ז",
-    27:"\n"}
+    27:" ",
+    28:"\n"}
 
-    f = open(f'results/{img_name}_characters.txt','a',encoding = 'utf-8')
-    
-    for word in sentence:
-        for char in word:
-            f.write(letters[char])
-        f.write('\n')
+    f = open(f'results/{img_name}_characters.txt','w',encoding = 'utf-8')
+    for line in labels:
+        for word in line:
+            for char in word:
+                f.write(letters[int(char)])
+            f.write(letters[27])
+        f.write(letters[28])
     f.close
 
         
 def styletotext(style,img_name):
-    f = open(f'results/{img_name}_style.txt','a',encoding = 'utf-8')
+    f = open(f'results/{img_name}_style.txt','w',encoding = 'utf-8')
     f.write(style)
     f.close
-
-Path('results/').mkdir(parents=True, exist_ok=True) 
-
-labeltotxt([0,1,2,3,4,5,6,7,27,0,1,2,3,4,5,6,7],'fg001')
-styletotext('Hasmonean','Fg001')
-#Character mapping for each of the 27 tokens

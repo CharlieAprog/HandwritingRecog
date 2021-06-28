@@ -94,18 +94,20 @@ def imagemorph_folder_balance(folder_path, times_x_current_data=0, even_data=Fal
     cnt = 0
     # if data should be saved in different folder
     # path = '/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/binarized_hdd_40x40'
-    path = '/home/jan/PycharmProjects/HandwritingRecog/Data_morphing/example_chars'
+    path = '/home/jan/PycharmProjects/HandwritingRecog/data/train_test_morph/style_train_test_arch_morph/train'
     for j in range(times_x_current_data):
         amp = random.uniform(1.5, 2.5)
         sigma = random.uniform(5.5, 8.5)
         for img_name in image_names:
             folders = img_name.split('/')
-            label = folders[7]
+            label = folders[9]
+            print(label)
             img = cv.imread(img_name)
             h, w, _ = img.shape
             res = imagemorph(img, amp, sigma, h, w)
             out_name = label + '/' + 'times_X' + str(cnt) + '.png'
             x = cv.imwrite(os.path.join(path, out_name), res)
+            print(x)
             cnt += 1
     if even_data:
         max_label_cnt = max(label_distribution.values())
@@ -120,7 +122,7 @@ def morph(folder_path, label_to_morph, morph_times, new_folder=False):
     image_names = glob.glob(folder_path)
     cnt = 0
     # path to where the morphed images are saved, each char will get its own folder
-    path = '/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/final_char_data/val'
+    path = '/home/jan/PycharmProjects/HandwritingRecog/data/train_test_morph/style_train_test_arch_morph/train'
 
     folders = image_names[0].split('/')
     prev_label = folders[9]
@@ -135,6 +137,7 @@ def morph(folder_path, label_to_morph, morph_times, new_folder=False):
         for img_name in image_names:
             folders = img_name.split('/')
             label = folders[9]
+            print(label)
             if label == label_to_morph:
                 if only_one_directory and label != prev_label:
                     os.mkdir(os.path.join(path, label))
@@ -149,4 +152,4 @@ def morph(folder_path, label_to_morph, morph_times, new_folder=False):
 
 
 if __name__ == '__main__':
-    imagemorph_folder_balance('/home/jan/PycharmProjects/HandwritingRecog/data/Char_Recog/final_char_data/train/*/*.png', even_data=False)
+    imagemorph_folder_balance('/home/jan/PycharmProjects/HandwritingRecog/data/train_test_morph/style_train_test_arch_morph/train/*/*.png', times_x_current_data=2)

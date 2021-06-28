@@ -33,7 +33,8 @@ def get_histogram(list_of_contours, dist_between_points, img, show_points=False)
     histogram = []
     hinge_points= []
     angles = []
-    # go thru every connected contour and extract the angles
+    
+    # go through every connected contour and extract the angles
     for list_of_cont_cords in list_of_contours:
         i = 0
         while i < (len(list_of_cont_cords) - (2 * dist_between_points)):

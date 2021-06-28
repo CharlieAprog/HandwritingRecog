@@ -113,7 +113,6 @@ def erode_clusters(word, kernel, iter_num=1):
 def character_segment(word, title=None):
     cluster_threshold = 7
     word = word.astype(np.uint8)
-    print("Running character segmentation...")
     num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
     clusters = get_component_clusters(num_labels, clusters)
     box_boundaries = get_bounding_box_boundaries(word, clusters)
@@ -123,12 +122,12 @@ def character_segment(word, title=None):
     while num_boxes > cluster_threshold:
         box_boundaries, word = dialate_clusters(word)
         num_boxes = len(box_boundaries)
-        print(num_boxes)
+        # print(num_boxes)
     # erosion, character segment, dialate clusters
 
     box_images, box_areas, new_word = get_box_images(box_boundaries, word)
     # plot_connected_component_bounding_boxes(word, box_boundaries, title = title)
-    print("Character segmentation complete.")
+    # print("Character segmentation complete.")
     # plot_simple_images(box_images)
     return box_images, box_areas, new_word, box_boundaries
 
@@ -178,12 +177,7 @@ def is_image_border_active(character):
 
 
 def get_character_area_outlier(segmented_word_box_areas):
-    
-    char_areas = destructure_characters(segmented_word_box_areas)
-    avg_area = np.mean(char_areas)
-    #print("*"*40)
-    #print("Average Character area", avg_area)
-    #print("*"*40)
+
     # Empirically observed values
     min_area = 500
     max_area = 8000  # anything above 8000 is undoubtedly more than 1 character in any test image
@@ -206,15 +200,12 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
     """
 
     outlier_thr = get_character_area_outlier(segmented_word_box_areas)
-    print("*"*40)
-    print("outlier_thr", outlier_thr)
-    print("*"*40)
     char_num = 0
     for line in segmented_word_box_images:
         for word in line:
             for char in word:
                 char_num += 1
-    print("Number of characters before filtering:", char_num)
+    # print("Number of characters before filtering:", char_num)
 
     filtered_word_box_images = []
     character_widths = []
@@ -249,16 +240,16 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
                     line_list.append(word_list)
         if line_list != []:
             filtered_word_box_images.append(line_list)
-    print('filter characters',len(filtered_word_box_images))
+    # print('filter characters',len(filtered_word_box_images))
 
     char_num = 0
     for line in filtered_word_box_images:
         for word in line:
             for char in word:
                 char_num += 1
-    print("*"*40)
-    print("Number of characters after filtering:", char_num)
-    print("*"*40)
+    # print("*"*40)
+    # print("Number of characters after filtering:", char_num)
+    # print("*"*40)
     return filtered_word_box_images, character_widths
 
 
@@ -322,7 +313,6 @@ def select_slides(sliding_characters, predicted_char_num, model, window_size, na
     recognised_characters = [first]
     probabilities = [prob_first]
     labels = [first_label]
-    print(window_size)
     prev_letter_start = 0
     start_idx = 0
     while chosen_characters < predicted_char_num:
@@ -339,17 +329,14 @@ def select_slides(sliding_characters, predicted_char_num, model, window_size, na
                 if start >= begin_limit and end <= end_limit :
                     predicted_label, probability = get_label_probability(slide, model)
                     predicted_letter = list(name2idx.keys())[predicted_label]
-                    print(f'Predicted label:{predicted_letter} probabilty:{probability}')
-                    print(f"window: [{shift * idx}-{window_size + shift * idx}]")
+                    # print(f'Predicted label:{predicted_letter} probabilty:{probability}')
+                    # print(f"window: [{shift * idx}-{window_size + shift * idx}]")
                     if probability > best_prob:
                         best_prob = probability
                         chosen_slide = slide
                         chosen_label = predicted_label
                         temp_idx = idx
         chosen_characters += 1
-        print('letter chosen')
-        
-        print(chosen_slide)
         if len(chosen_slide) != 0:
             recognised_characters.append(clean_image(chosen_slide))
             probabilities.append(best_prob)
@@ -429,6 +416,6 @@ def character_segmentation(words_in_lines):
                     eroded_words.append(character_segment)
             eroded_lines.append(eroded_words)
         characters_eroded.append(eroded_lines)
-    print(f'all:{all_suspected}, changed:{changed}')
+    # print(f'all:{all_suspected}, changed:{changed}')
     return characters_eroded, single_character_widths, mean_single_character_width
 

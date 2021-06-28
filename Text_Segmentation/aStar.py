@@ -33,7 +33,7 @@ def astar(array, start, goal, i):
             neighbor = current[0] + i, current[1] + j
             tentative_g_score = gscore[current] + heuristic(current, neighbor)
             if i == 11:
-                print(current)
+                # print(current)
             if 0 <= neighbor[0] < array.shape[0]:
                 if 0 <= neighbor[1] < array.shape[1]:
                     if array[neighbor[0]][neighbor[1]] == 1:
@@ -51,7 +51,7 @@ def astar(array, start, goal, i):
                     i[1] for i in oheap
             ]:
                 if i == 11:
-                    print(current)
+                    # print(current)
                 came_from[neighbor] = current
                 gscore[neighbor] = tentative_g_score
                 fscore[neighbor] = tentative_g_score + \
@@ -122,7 +122,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
     agent_height = []
     upward_push = int(avg_lh * 0.85)
     for idx, cluster_of_interest in enumerate(hpp_clusters):
-        print(idx)
+        # print(idx)
         nmap = binary_image[cluster_of_interest[0]:cluster_of_interest[-1]]
         road_blocks = get_road_block_regions(nmap)
         start_end_height = int(nmap.shape[0] / 2)
@@ -135,7 +135,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
             road_blocks_new = get_road_block_regions(nmap_rb)
             if road_blocks_new != road_blocks and len(road_blocks_new) < len(
                     road_blocks):
-                print('Fake roadblock has been hit, better path found')
+                # print('Fake roadblock has been hit, better path found')
                 fake_rb_indices.append(idx)
                 road_blocks = road_blocks_new
         road_blocks_cluster_groups = group_the_road_blocks(road_blocks)
@@ -182,7 +182,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
                                         0, i:i + fake_end_length])[0]) != 0:
                             rb_end_reached = False
                             prev_pixel = 0
-                            print("fake end")
+                            # print("fake end")
                             continue
                         # true end
                         break
@@ -209,10 +209,7 @@ def find_paths(hpp_clusters, binary_image, avg_lh):
             height = agent_height[i]
         path = np.array(
             astar(nmap, (height, 0), (height, nmap.shape[1] - 1), i))
-        print("path.shape:", path.shape)
-        # assert path.shape[0] != 0, "Path has shape (0,), algorithm failed to reach destination."
         if path.shape[0] == 0:
-            print(f'Path could not be generated for line {i+1}')
             continue
         path[:, 0] += offset_from_top
         path = [list(step) for step in path]

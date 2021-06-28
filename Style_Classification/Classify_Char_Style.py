@@ -16,7 +16,7 @@ from Style_Classification.Calculate_Hinge_Features import *
 PI = 3.14159265359
 
 
-def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.7,global_vec = False, show_hinge_points=False):
+def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.0,global_vec = False, show_hinge_points=False):
     # main pipeline function to get char style for a given vector
     style_char_vec = []
     chi_squared_vec = []
@@ -95,17 +95,18 @@ def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.7,glo
 
                 # get feature vector of given char and get chisquared for each pdf
                 feature_vector = get_char_vector(image)
-                chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[27]])
-                chi_herodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[27]])
-                chi_archaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[27]])
-                minchi = min(chi_hasmonean, chi_herodian, chi_archaic)
+                if feature_vector != 0:
+                    chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[27]])
+                    chi_herodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[27]])
+                    chi_archaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[27]])
+                    minchi = min(chi_hasmonean, chi_herodian, chi_archaic)
 
-                if minchi == chi_hasmonean: predicted = 'Hasmonean'
-                if minchi == chi_herodian: predicted = 'Herodian'
-                if minchi == chi_archaic: predicted = 'Archaic'
+                    if minchi == chi_hasmonean: predicted = 'Hasmonean'
+                    if minchi == chi_herodian: predicted = 'Herodian'
+                    if minchi == chi_archaic: predicted = 'Archaic'
 
-                style_char_vec.append(predicted)
-                chi_squared_vec.append(minchi)
+                    style_char_vec.append(predicted)
+                    chi_squared_vec.append(minchi)
 
             else:
                 # get hinge pdfs
@@ -115,21 +116,21 @@ def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.7,glo
                     hasmonean_pdfs[idx2name[label]] = get_hinge_pdf(idx2name[label], hasmonean_imgs)
                 if idx2name[label] not in herodian_pdfs:
                     herodian_pdfs[idx2name[label]] = get_hinge_pdf(idx2name[label], herodian_imgs)
-
+                
                 # calculate vector for char and chisquared distance
                 feature_vector = get_char_vector(image)
+                if feature_vector != 0:
+                    chi_archaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[label]])
+                    chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[label]])
+                    chi_herodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[label]])
 
-                chi_archaic = get_chisquared(feature_vector, archaic_pdfs[idx2name[label]])
-                chi_hasmonean = get_chisquared(feature_vector, hasmonean_pdfs[idx2name[label]])
-                chi_herodian = get_chisquared(feature_vector, herodian_pdfs[idx2name[label]])
-
-                # smallest chi squared is the style of char
-                minchi = min(chi_hasmonean, chi_herodian, chi_archaic)
-                if minchi == chi_archaic: predicted = 'Archaic'
-                if minchi == chi_hasmonean: predicted = 'Hasmonean'
-                if minchi == chi_herodian: predicted = 'Herodian'
-                style_char_vec.append(predicted)
-                chi_squared_vec.append(minchi)
+                    # smallest chi squared is the style of char
+                    minchi = min(chi_hasmonean, chi_herodian, chi_archaic)
+                    if minchi == chi_archaic: predicted = 'Archaic'
+                    if minchi == chi_hasmonean: predicted = 'Hasmonean'
+                    if minchi == chi_herodian: predicted = 'Herodian'
+                    style_char_vec.append(predicted)
+                    chi_squared_vec.append(minchi)
 
     else:
         print('Getting Style codebook vectors')
