@@ -275,7 +275,7 @@ def line_segmentation(img_path, new_folder_path):
     
     image = get_binary(cv2.resize(image, (ratio*image.shape[1], ratio*image.shape[0])))
     dilated_image = copy.deepcopy(image)
-    kernel = np.ones((3, 3), 'uint8')
+    kernel = np.ones((1, 1), 'uint8')
     dilated_image = cv2.dilate(dilated_image, kernel, iterations=1)
     plot_simple_images([image, dilated_image], "Original image vs dilated image")
     # plot_simple_images([image, dilated_image], title="Original vs Dilated image")

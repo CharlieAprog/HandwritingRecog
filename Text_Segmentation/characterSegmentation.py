@@ -77,6 +77,7 @@ def dialate_clusters(word, kernel=(5, 3)):
     num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
     clusters = get_component_clusters(num_labels, clusters)
     box_boundaries = get_bounding_box_boundaries(word, clusters)
+    box_boundaries = sorted(box_boundaries, key=lambda x: x[1][1])
     # plotConnectedComponentBoundingBoxes(word, box_boundaries)
     return box_boundaries, word
 
@@ -104,6 +105,7 @@ def erode_clusters(word, kernel, iter_num=1):
     num_labels, clusters = cv2.connectedComponents(word, connectivity=4)
     clusters = get_component_clusters(num_labels, clusters)
     box_boundaries = get_bounding_box_boundaries(word, clusters)
+    box_boundaries = sorted(box_boundaries, key=lambda x: x[1][1])
     # plotConnectedComponentBoundingBoxes(word, box_boundaries)
     return box_boundaries, word
 
@@ -176,12 +178,8 @@ def is_image_border_active(character):
 
 def get_character_area_outlier(segmented_word_box_areas):
     
-    chars = []
-    for line in segmented_word_box_areas:
-        for word in line:
-            for char in word:
-                chars.append(char)
-    avg_area = np.mean(chars)
+    char_areas = destructure_characters(segmented_word_box_areas)
+    avg_area = np.mean(char_areas)
     #print("*"*40)
     #print("Average Character area", avg_area)
     #print("*"*40)
@@ -263,31 +261,7 @@ def filter_characters(segmented_word_box_areas, segmented_word_box_images, all_b
     return filtered_word_box_images, character_widths
 
 
-def filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_box_img_list, eroded_box_boundaries,
-                             eroded_img):
-    outlier_thr = get_character_area_outlier(segmented_word_box_areas)
-    plot_simple_images([eroded_img], title= 'before')
-    filtered_images = []
-    for i, image in enumerate(eroded_box_img_list):
-        if image.size != 0:
-            skip_left_pruning = False
-            skip_right_pruning = False
-            if eroded_box_areas[i] >= outlier_thr:
-                boundary = eroded_box_boundaries[i]
-                if not is_boundary_included(eroded_box_boundaries, boundary):
-                    x_min = boundary[1][0]  -1 if boundary[1][0] -1 != -1 else 0
-                    x_max = boundary[1][1] +1
-                    taller_cluster = eroded_img[:, x_min:x_max]
-                    if x_min == 0:
-                        skip_left_pruning = True
-                    if x_max == eroded_img.shape[1]:
-                        skip_right_pruning = True
-                    if taller_cluster != []:
-                        if is_image_border_active(taller_cluster):
-                            filtered_images.append(clean_image(image, skip_left_pruning=skip_left_pruning,skip_right_pruning=skip_right_pruning))
-                        else:
-                            filtered_images.append(clean_image(taller_cluster, skip_left_pruning=skip_left_pruning,skip_right_pruning=skip_right_pruning))
-    return filtered_images
+
 
 
 def remove_character_artifacts(image, skip_left_pruning=False, skip_right_pruning=False,
@@ -381,6 +355,38 @@ def select_slides(sliding_characters, predicted_char_num, model, window_size, na
     labels.append(last_label)
     return recognised_characters, labels
 
+def dilate_and_filter_eroded_characters(segmented_word_box_areas, eroded_box_areas, eroded_box_img_list, eroded_box_boundaries,
+                             eroded_img):
+    outlier_thr = get_character_area_outlier(segmented_word_box_areas)
+    # plot_simple_images([eroded_img], title= 'before')
+    filtered_images = []
+    for i, image in enumerate(eroded_box_img_list):
+        if image.size != 0:
+            skip_left_pruning = False
+            skip_right_pruning = False
+            if eroded_box_areas[i] >= outlier_thr:
+                boundary = eroded_box_boundaries[i]
+                if not is_boundary_included(eroded_box_boundaries, boundary):
+                    x_min = boundary[1][0] - 1 if boundary[1][0] -1 != -1 else 0
+                    x_max = boundary[1][1] + 1
+                    taller_cluster = eroded_img[:, x_min:x_max]
+                    if x_min == 0:
+                        skip_left_pruning = True
+                    if x_max == eroded_img.shape[1]:
+                        skip_right_pruning = True
+                    if taller_cluster != []:
+                        kernel = np.ones((2, 2), np.uint8)
+                        if is_image_border_active(taller_cluster):
+                            image = np.pad(image, pad_width=20, mode="constant", constant_values=0)
+                            dilated_img = cv2.dilate(image, kernel, iterations=6)
+                            filtered_images.append(clean_image(dilated_img, skip_left_pruning=skip_left_pruning,skip_right_pruning=skip_right_pruning))
+                        else:
+                            taller_cluster = np.pad(taller_cluster, pad_width=20, mode="constant", constant_values=0)
+                            dilated_img = cv2.dilate(taller_cluster, kernel, iterations=6)
+                            filtered_images.append(clean_image(dilated_img, skip_left_pruning=skip_left_pruning,skip_right_pruning=skip_right_pruning))
+    return filtered_images
+
+
 
 def character_segmentation(words_in_lines):
     # Get all characters from all words
@@ -389,7 +395,6 @@ def character_segmentation(words_in_lines):
                                                                              segmented_word_box_images,
                                                                              all_box_boundaries,
                                                                              words_in_lines)
-    # characters = destructure_characters(filtered_word_box_images_all_lines)
     single_character_widths = [width for width in character_widths if width <= 120]
     mean_character_width = np.mean(single_character_widths)
 
@@ -402,35 +407,21 @@ def character_segmentation(words_in_lines):
             eroded_words = []
             for char_idx, character_segment in enumerate(word):
                 if character_segment.shape[1] > mean_character_width + np.std(single_character_widths):
-                    
                     all_suspected += 1
                     # Run connected components to get number of labels, so merged clusters are identified beforehand
                     character_segment = character_segment.astype(np.uint8)
                     num_labels, clusters = cv2.connectedComponents(character_segment, connectivity=4)
                     clusters = get_component_clusters(num_labels, clusters)
-                    box_boundaries = get_bounding_box_boundaries(character_segment, clusters)
-
                     eroded_img_boundaries, eroded_img = erode_clusters(character_segment, (2, 2), iter_num=6)
                     eroded_box_img_list, eroded_box_areas, eroded_img = get_box_images(eroded_img_boundaries, eroded_img)
-                    # TODO: Dilation and Connected components before filtering
-                    filtered_eroded_box_img_list = filter_eroded_characters(segmented_word_box_areas, eroded_box_areas,
-                                                                            eroded_box_img_list, eroded_img_boundaries,
-                                                                            eroded_img)
-                    if len(eroded_img_boundaries) > len(box_boundaries):
-                        changed += 1
-                        temp_list = []
-                        for img in filtered_eroded_box_img_list:
-                            kernel = np.ones((2, 2), np.uint8)
-                            img = img.astype(np.uint8)
-                            if img.size > 0:
-                                dialated_img = cv2.dilate(img, kernel, iterations=6)
-                                eroded_words.append(dialated_img)
-                                temp_list.append(dialated_img)
-                        temp_list.append(character_segment)
-                        # plotSimpleImages(temp_list, title='Dialation and erosion')
+                    filtered_eroded_box_img_list = dilate_and_filter_eroded_characters(segmented_word_box_areas, eroded_box_areas,
+                                                                                        eroded_box_img_list, eroded_img_boundaries,
+                                                                                        eroded_img)
+                    eroded_words.extend(filtered_eroded_box_img_list)
                 else:
                     eroded_words.append(character_segment)
             eroded_lines.append(eroded_words)
         characters_eroded.append(eroded_lines)
     print(f'all:{all_suspected}, changed:{changed}')
     return characters_eroded, single_character_widths, mean_character_width
+

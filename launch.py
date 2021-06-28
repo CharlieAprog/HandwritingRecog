@@ -18,7 +18,7 @@ from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRe
 # image_num = 15
 # image_names = ["25-Fg001.pbm", "124-Fg004.pbm", "archaic1.jpg", "archaic2.jpg", "archaic3.jpg",
 #                 "hasmonean3.jpg", "hasmonian1.jpg", "herodian1.jpg", "herodian2.jpg", "herodian3.jpg"]
-image_name = "hasmonean3.jpg"
+image_name = "25-Fg001.pbm"
 #image_name = 15
 
 # new images
@@ -36,7 +36,10 @@ section_images = line_segmentation(dev_path, new_folder_path)
 lines, words_in_lines = word_segmentation(section_images)
 characters_word_line, single_character_widths, mean_character_width = character_segmentation(words_in_lines)
 
-
+# plot_simple_images(lines)
+# for line in words_in_lines:
+#     for word in line:
+#         plot_simple_images(word)
 
 model = TheRecognizer()
 model.load_model(model.load_checkpoint('40_char_rec.ckpt', map_location=torch.device('cpu')))
@@ -73,7 +76,7 @@ for line in characters_word_line:
                 predictions_string = ''
                 for label in predicted_labels:
                     predictions_string = f'{predictions_string}, {list(name2idx.keys())[label]}'
-                # plot_simple_images(multiple_characters, title=predictions_string)
+                plot_simple_images(multiple_characters, title=predictions_string)
                 word_imgs.extend(recognised_characters)
                 word_labels.extend(predicted_labels)
                 # all_segmented_characters.extend(recognised_characters)
@@ -94,7 +97,7 @@ for line in characters_word_line:
                     predicted_label, probability = get_label_probability(character_segment, model)
                     predicted_letter = list(name2idx.keys())[predicted_label]
                     print(f'Predicted label:{predicted_letter} probabilty:{probability}')
-                    # plot_simple_images([character_segment], title=f'{predicted_label + 1}:{predicted_letter}')
+                    plot_simple_images([character_segment], title=f'{predicted_label + 1}:{predicted_letter}')
                     word_imgs.append(character_segment)
                     word_labels.append(predicted_label)
                     # all_segmented_characters.append(character_segment)

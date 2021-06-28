@@ -139,6 +139,8 @@ def plot_hough_transform(hspace,
 
 
 def plot_simple_images(image_list, title=None):
+    if type(image_list) != list:
+        image_list = [image_list]
     fig, ax = plt.subplots(nrows=len(image_list), figsize=(5, 6))
     for index, image in enumerate(image_list):
         if len(image_list) > 1:
