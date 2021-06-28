@@ -2,13 +2,16 @@
 Authors: Charlie Albietz, Péter Varga, Panagiotis Ritas, Jan-Henner Roberg
 
 In this repository, you will find :
+
     - The Style Classification folder which contains: 
+    
         -Calculate_Hinge_Features.py contains all functions for calculating the hinge features
         -Classify_Char_Style.py has the main functions for calculating the dominant style of a character
         -hinge_utils.py contains all the utilities for calculating the hinge features
         -SVM_Style.py contains the setting up and preprocessing of the SVM and calculates the dominant Style of an input image
 
     -The Text_Segmentation folder which contains:
+    
         -characterSegmentation.py contains functions that involve splitting up and locating individual characters in the located words
         -lineSegmentation.py contains functions that help segmenting the lines of an image, this is done using the astar aglorithm
         -plotting.py contains functions for plotting/debugging in the segmentation task
@@ -16,11 +19,13 @@ In this repository, you will find :
         -wordSegmentation.py fucntions to help split up the obtained lines into seperate words
     
     -The Character_Recog folder which contains:
+    
         -data_investigation.py which contains all preprocessing functions for preparing the datasets for character recognition,
         as well as splitting into train/test, resizing and padding, etc
         -main.py which is the main function for the datapreprocessing, data augmentation, etc
 
     -The models folder which contains:
+    
         -Character_Recognition_Train.ipynb where the code for training the character recognizer is, also contains code for cross-validation
         and other model optimizing code
         -SVM.py which contain code for training and testing a SVM for style Classification
