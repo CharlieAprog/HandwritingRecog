@@ -93,10 +93,14 @@ def labeltotxt(labels,img_name):
         f.write(letters[label])
         
    
-
+def styletotext(style,img_name):
+    f = open(f'results/{img_name}_style.txt','a',encoding = 'utf-8')
+    f.write(style)
+    f.close
 
 Path('results/').mkdir(parents=True, exist_ok=True) 
 
 
 labeltotxt([0,1,2,3,4,5,6,7,27,0,1,2,3,4,5,6,7],'fg001')
+styletotext('Hasmonean','Fg001')
 #Character mapping for each of the 27 tokens

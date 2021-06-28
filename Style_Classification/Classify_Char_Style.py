@@ -16,7 +16,7 @@ from Style_Classification.Calculate_Hinge_Features import *
 PI = 3.14159265359
 
 
-def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.5,global_vec = False, show_hinge_points=False):
+def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.7,global_vec = False, show_hinge_points=False):
     # main pipeline function to get char style for a given vector
     style_char_vec = []
     chi_squared_vec = []
@@ -74,9 +74,8 @@ def get_style_char_vec(characters, labels,probabilities,prob_threshold = 0.5,glo
     labels = np.delete(labels,index)
     probabilities = np.delete(probabilities,index)
 
-    print('#Number of characters removed  by probability thresholding')
+    print('#Number of charactersafter removal by probability thresholding')
     print(len(characters))
-    print(labels)
 
     # calculate Character specific hinge pdfs per style
     if global_vec == False:
