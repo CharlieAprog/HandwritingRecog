@@ -330,21 +330,22 @@ def select_slides(sliding_characters, predicted_char_num, model, window_size, na
         chosen_slide = []
         chosen_label = 0
         for idx, slide in enumerate(sliding_characters[start_idx:]):
-            start = shift * idx
-            end = start + window_size
-            begin_limit = int(prev_letter_start + window_size * 0.75)
-            end_limit = int(prev_letter_start + window_size * 0.75 + window_size + window_size * 0.6)
-            # print(begin_limit, end_limit)
-            if start >= begin_limit and end <= end_limit and slide.size != 0:
-                predicted_label, probability = get_label_probability(slide, model)
-                predicted_letter = list(name2idx.keys())[predicted_label]
-                print(f'Predicted label:{predicted_letter} probabilty:{probability}')
-                print(f"window: [{shift * idx}-{window_size + shift * idx}]")
-                if probability > best_prob:
-                    best_prob = probability
-                    chosen_slide = slide
-                    chosen_label = predicted_label
-                    temp_idx = idx
+            if slide.size[1] != 0:
+                start = shift * idx
+                end = start + window_size
+                begin_limit = int(prev_letter_start + window_size * 0.75)
+                end_limit = int(prev_letter_start + window_size * 0.75 + window_size + window_size * 0.6)
+                # print(begin_limit, end_limit)
+                if start >= begin_limit and end <= end_limit :
+                    predicted_label, probability = get_label_probability(slide, model)
+                    predicted_letter = list(name2idx.keys())[predicted_label]
+                    print(f'Predicted label:{predicted_letter} probabilty:{probability}')
+                    print(f"window: [{shift * idx}-{window_size + shift * idx}]")
+                    if probability > best_prob:
+                        best_prob = probability
+                        chosen_slide = slide
+                        chosen_label = predicted_label
+                        temp_idx = idx
         chosen_characters += 1
         print('letter chosen')
         
