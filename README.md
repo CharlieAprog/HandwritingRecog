@@ -1,5 +1,5 @@
 # Handwriting Recognition
-Authors: Charlie Albietz, Peter Varga, Panagiotis Ritas, Jan-Henner Roberg
+Authors: Charlie Albietz, Péter Varga, Panagiotis Ritas, Jan-Henner Roberg
 
 In this repository, you will find :
     - The Style Classification folder which contains: 
@@ -35,9 +35,9 @@ In this repository, you will find :
     
 
 To run the pipeline:
-    1)unzip .zip file (or access clone git link)
-    2)cd to repository
-    3) in new virtual environment, do pip3 install requirements.txt
+    1) unzip .zip file (or access clone git link)
+    2) cd to repository
+    3) in new virtual environment, do pip3 install -r requirements.txt
     the packages/dependencies should be now installed.
     to run the pipeline:
     
