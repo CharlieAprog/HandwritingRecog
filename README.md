@@ -31,7 +31,6 @@ In this repository, you will find :
         -SVM.py which contain code for training and testing a SVM for style Classification
 
     On the top level of the repository, there is:
-        -input_output.py
         - font2image.py contains the functions for putting the styl and transcript outputs into .txt files
         - launch.py from which the whole pipeline is ran, and te the three task modules are combined.
         - two files where the trained character recognizer and Style classifer are loaded from
