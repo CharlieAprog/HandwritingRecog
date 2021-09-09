@@ -52,3 +52,5 @@ To run the pipeline:
 The pipeline will now be running. as output you will get:
     -a new results/ folder which will contain the .txt output files
     -There will also be a /paths folder for each image that contains the astar .csv files for line/char segmentation
+
+The final paper can be found in the final papers folder
