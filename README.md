@@ -42,7 +42,7 @@ To run the pipeline:
 
     * 1) unzip .zip file (or access clone git link)
     * 2) cd to repository
-    * 3) in new virtual environment, do pip3 install -r requirements.txt
+    * 3) in new virtual environment (using python3.8), do pip3 install -r requirements.txt
     the packages/dependencies should be now installed.
     
     to run the pipeline:
