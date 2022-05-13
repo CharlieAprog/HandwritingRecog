@@ -15,7 +15,9 @@ from Text_Segmentation.characterSegmentation import character_segmentation, remo
 from Text_Segmentation.segmentation_to_recog import get_label_probability, TheRecognizer
 import glob
 import argparse
+import warnings
 
+warnings.filterwarnings('ignore')
 
 # data/cropped_labeled_images/
 #parsing path for image folder
